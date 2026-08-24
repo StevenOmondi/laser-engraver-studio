@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Console - Laser Engraver Studio{% endblock %}
+{% block page_title %}Console{% endblock %}
+{% block page_subtitle %}Send GRBL commands and watch controller replies{% endblock %}
+
+{% block content %}
+<section class="content-grid console-grid">
+  <form class="panel" id="console-form">
+    <div class="panel-heading">
+      <div>
+        <h2>Command</h2>
+        <span>GRBL serial line</span>
+      </div>
+      <i class="bi bi-terminal"></i>
+    </div>
+    <label class="form-label" for="console-command">Command</label>
+    <input class="form-control command-input" id="console-command" value="$$" autocomplete="off">
+    <button class="btn btn-primary" type="submit"><i class="bi bi-send"></i> Send</button>
+    <div class="quick-commands">
+      <button type="button" class="btn btn-outline-secondary" data-command="?">?</button>
+      <button type="button" class="btn btn-outline-secondary" data-command="$$">$$</button>
+      <button type="button" class="btn btn-outline-secondary" data-command="$I">$I</button>
+      <button type="button" class="btn btn-outline-secondary" data-command="$#">$#</button>
+      <button type="button" class="btn btn-outline-secondary" data-command="M5">M5</button>
+    </div>
+  </form>
+
+  <div class="panel wide">
+    <div class="panel-heading">
+      <div>
+        <h2>Log</h2>
+        <span id="log-count">0 lines</span>
+      </div>
+      <i class="bi bi-list-columns-reverse"></i>
+    </div>
+    <pre class="console-log" id="console-log"></pre>
+  </div>
+</section>
+{% endblock %}

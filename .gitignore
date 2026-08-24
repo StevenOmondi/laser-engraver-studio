@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+data/jobs/*
+!data/jobs/.gitkeep
+data/settings.json
+*.log
+.DS_Store

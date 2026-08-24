@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Settings - Laser Engraver Studio{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_subtitle %}Machine, laser, and generation defaults{% endblock %}
+
+{% block content %}
+<form class="content-grid" id="settings-form">
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Machine</h2>
+        <span>{{ machine.name }}</span>
+      </div>
+      <i class="bi bi-motherboard"></i>
+    </div>
+    <label class="form-label">Work width mm</label>
+    <input class="form-control" name="machine.work_width_mm" type="number" value="{{ machine.work_width_mm }}">
+    <label class="form-label">Work height mm</label>
+    <input class="form-control" name="machine.work_height_mm" type="number" value="{{ machine.work_height_mm }}">
+    <label class="form-label">PWM max</label>
+    <input class="form-control" name="machine.pwm_max" type="number" value="{{ machine.pwm_max }}">
+    <label class="form-label">Max feed</label>
+    <input class="form-control" name="machine.max_feed_mm_min" type="number" value="{{ machine.max_feed_mm_min }}">
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Laser</h2>
+        <span>{{ laser.name }}</span>
+      </div>
+      <i class="bi bi-brightness-high"></i>
+    </div>
+    <label class="form-label">Engrave power S</label>
+    <input class="form-control" name="laser.default_engrave_power" type="number" value="{{ laser.default_engrave_power }}">
+    <label class="form-label">Cut power S</label>
+    <input class="form-control" name="laser.default_cut_power" type="number" value="{{ laser.default_cut_power }}">
+    <label class="form-label">Focus pulse S</label>
+    <input class="form-control" name="laser.focus_power" type="number" value="{{ laser.focus_power }}">
+    <label class="form-label">PWM control</label>
+    <input class="form-control" name="laser.pwm_control" value="{{ laser.pwm_control }}">
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Generator</h2>
+        <span>Default job values</span>
+      </div>
+      <i class="bi bi-input-cursor-text"></i>
+    </div>
+    <label class="form-label">Engrave feed</label>
+    <input class="form-control" name="defaults.engrave_feed" type="number" value="{{ settings.defaults.engrave_feed }}">
+    <label class="form-label">Cut feed</label>
+    <input class="form-control" name="defaults.cut_feed" type="number" value="{{ settings.defaults.cut_feed }}">
+    <label class="form-label">Raster width mm</label>
+    <input class="form-control" name="defaults.raster_width_mm" type="number" value="{{ settings.defaults.raster_width_mm }}">
+    <label class="form-label">Raster power S</label>
+    <input class="form-control" name="defaults.raster_power" type="number" value="{{ settings.defaults.raster_power }}">
+    <label class="form-label">Binary threshold</label>
+    <input class="form-control" name="defaults.binary_threshold" type="number" value="{{ settings.defaults.binary_threshold }}">
+  </section>
+
+  <section class="panel wide profile-notes">
+    <div class="panel-heading">
+      <div>
+        <h2>Profile Notes</h2>
+        <span>Current board and module assumptions</span>
+      </div>
+      <i class="bi bi-info-circle"></i>
+    </div>
+    <div class="note-columns">
+      <ul>
+        {% for note in machine.notes %}
+        <li>{{ note }}</li>
+        {% endfor %}
+      </ul>
+      <ul>
+        {% for note in laser.notes %}
+        <li>{{ note }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Settings</button>
+  </section>
+</form>
+{% endblock %}

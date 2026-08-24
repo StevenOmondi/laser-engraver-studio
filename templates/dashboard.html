@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Laser Engraver Studio{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Connect, arm, jog, frame, and monitor jobs{% endblock %}
+
+{% block content %}
+<section class="grid-dashboard">
+  <div class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Connection</h2>
+        <span id="controller-state">Disconnected</span>
+      </div>
+      <i class="bi bi-router"></i>
+    </div>
+    <form id="connect-form" class="stack">
+      <div class="segmented">
+        <input class="btn-check" type="radio" name="mode" id="mode-sim" value="simulator" checked>
+        <label class="btn btn-outline-primary" for="mode-sim"><i class="bi bi-cpu"></i> Simulator</label>
+        <input class="btn-check" type="radio" name="mode" id="mode-serial" value="serial">
+        <label class="btn btn-outline-primary" for="mode-serial"><i class="bi bi-usb-plug"></i> USB</label>
+      </div>
+      <div class="row g-2">
+        <div class="col-8">
+          <label class="form-label" for="serial-port">Port</label>
+          <select class="form-select" id="serial-port"></select>
+        </div>
+        <div class="col-4">
+          <label class="form-label" for="baud">Baud</label>
+          <input class="form-control" id="baud" name="baud" value="{{ machine.default_baud }}">
+        </div>
+      </div>
+      <div class="button-row">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-plug"></i> Connect</button>
+        <button type="button" class="btn btn-outline-secondary" id="refresh-ports"><i class="bi bi-arrow-repeat"></i></button>
+        <button type="button" class="btn btn-outline-secondary" data-api-post="/api/disconnect"><i class="bi bi-x-circle"></i> Disconnect</button>
+      </div>
+      <button type="button" class="btn btn-outline-primary w-100" data-api-post="/api/setup/apply">
+        <i class="bi bi-check2-square"></i> Apply GRBL Setup
+      </button>
+    </form>
+  </div>
+
+  <div class="panel safety-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Safety</h2>
+        <span id="safety-state">Disarmed</span>
+      </div>
+      <i class="bi bi-shield-exclamation"></i>
+    </div>
+    <div class="safety-actions">
+      <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#armModal"><i class="bi bi-shield-fill-check"></i> Arm</button>
+      <button class="btn btn-outline-danger" data-api-post="/api/disarm"><i class="bi bi-shield-slash"></i> Disarm</button>
+      <button class="btn btn-outline-secondary" id="focus-pulse"><i class="bi bi-record-circle"></i> Focus Pulse</button>
+    </div>
+    <button class="btn btn-emergency" data-api-post="/api/estop"><i class="bi bi-stop-circle-fill"></i> Emergency Stop</button>
+  </div>
+
+  <div class="panel machine-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Machine</h2>
+        <span id="machine-position">X0.000 Y0.000 Z0.000</span>
+      </div>
+      <i class="bi bi-crosshair"></i>
+    </div>
+    <div class="machine-actions">
+      <button class="btn btn-outline-secondary" data-command="$X"><i class="bi bi-unlock"></i> Unlock</button>
+      <button class="btn btn-outline-secondary" data-command="$H"><i class="bi bi-house"></i> Home</button>
+      <button class="btn btn-outline-secondary" data-command="G92 X0 Y0 Z0"><i class="bi bi-pin-map"></i> Zero</button>
+    </div>
+    <div class="jog-pad">
+      <button class="btn btn-light jog" data-y="10"><i class="bi bi-arrow-up"></i></button>
+      <button class="btn btn-light jog" data-x="-10"><i class="bi bi-arrow-left"></i></button>
+      <button class="btn btn-light jog" data-x="10"><i class="bi bi-arrow-right"></i></button>
+      <button class="btn btn-light jog" data-y="-10"><i class="bi bi-arrow-down"></i></button>
+    </div>
+    <div class="row g-2">
+      <div class="col">
+        <label class="form-label" for="jog-step">Step</label>
+        <input class="form-control" id="jog-step" type="number" value="10" min="0.1" max="100" step="0.1">
+      </div>
+      <div class="col">
+        <label class="form-label" for="jog-feed">Feed</label>
+        <input class="form-control" id="jog-feed" type="number" value="{{ machine.default_jog_feed_mm_min }}" min="50" max="{{ machine.max_feed_mm_min }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel job-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Active Job</h2>
+        <span id="active-job-name">No job loaded</span>
+      </div>
+      <i class="bi bi-lightning-charge"></i>
+    </div>
+    <div class="progress job-progress" role="progressbar" aria-label="Job progress">
+      <div class="progress-bar" id="job-progress-bar" style="width: 0%">0%</div>
+    </div>
+    <div class="button-row">
+      <button class="btn btn-outline-secondary" data-job-control="pause"><i class="bi bi-pause-fill"></i> Hold</button>
+      <button class="btn btn-outline-secondary" data-job-control="resume"><i class="bi bi-play-fill"></i> Resume</button>
+      <button class="btn btn-outline-danger" data-job-control="stop"><i class="bi bi-stop-fill"></i> Stop</button>
+    </div>
+    <a class="btn btn-primary w-100" href="{{ url_for('jobs_page') }}"><i class="bi bi-stack"></i> Open Jobs</a>
+  </div>
+</section>
+{% endblock %}

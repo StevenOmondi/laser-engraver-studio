@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Designer - Laser Engraver Studio{% endblock %}
+{% block page_title %}Designer{% endblock %}
+{% block page_subtitle %}Generate demo, text, image, and manual G-code jobs{% endblock %}
+
+{% block content %}
+<section class="content-grid">
+  <div class="panel wide">
+    <div class="panel-heading">
+      <div>
+        <h2>Demo Examples</h2>
+        <span>LS ESP32 Pro V2.2 + LT-20W-A</span>
+      </div>
+      <i class="bi bi-grid-3x3-gap"></i>
+    </div>
+    <div class="example-grid" id="examples-list"></div>
+  </div>
+
+  <form class="panel" id="text-generator">
+    <div class="panel-heading">
+      <div>
+        <h2>Text</h2>
+        <span>Raster text job</span>
+      </div>
+      <i class="bi bi-fonts"></i>
+    </div>
+    <label class="form-label" for="text-input">Text</label>
+    <textarea class="form-control" id="text-input" name="text" rows="4">Jambo Laser</textarea>
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label" for="text-width">Width mm</label>
+        <input class="form-control" id="text-width" name="width_mm" type="number" value="{{ settings.defaults.raster_width_mm }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="text-power">Power S</label>
+        <input class="form-control" id="text-power" name="power" type="number" value="{{ settings.defaults.raster_power }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="text-feed">Feed</label>
+        <input class="form-control" id="text-feed" name="feed" type="number" value="{{ settings.defaults.engrave_feed }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="font-size">Font</label>
+        <input class="form-control" id="font-size" name="font_size" type="number" value="48">
+      </div>
+    </div>
+    <label class="form-check mt-2">
+      <input class="form-check-input" type="checkbox" name="grayscale">
+      <span class="form-check-label">Grayscale power</span>
+    </label>
+    <button class="btn btn-primary w-100" type="submit"><i class="bi bi-magic"></i> Create Text Job</button>
+  </form>
+
+  <form class="panel" id="image-generator" enctype="multipart/form-data">
+    <div class="panel-heading">
+      <div>
+        <h2>Image</h2>
+        <span>PNG or JPG raster</span>
+      </div>
+      <i class="bi bi-image"></i>
+    </div>
+    <label class="form-label" for="image-file">Image</label>
+    <input class="form-control" id="image-file" name="image" type="file" accept="image/png,image/jpeg,image/webp">
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label" for="image-width">Width mm</label>
+        <input class="form-control" id="image-width" name="width_mm" type="number" value="{{ settings.defaults.raster_width_mm }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="image-power">Power S</label>
+        <input class="form-control" id="image-power" name="power" type="number" value="{{ settings.defaults.raster_power }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="image-feed">Feed</label>
+        <input class="form-control" id="image-feed" name="feed" type="number" value="{{ settings.defaults.engrave_feed }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="image-threshold">Threshold</label>
+        <input class="form-control" id="image-threshold" name="threshold" type="number" value="{{ settings.defaults.binary_threshold }}">
+      </div>
+    </div>
+    <div class="two-checks">
+      <label class="form-check">
+        <input class="form-check-input" type="checkbox" name="grayscale">
+        <span class="form-check-label">Grayscale</span>
+      </label>
+      <label class="form-check">
+        <input class="form-check-input" type="checkbox" name="invert">
+        <span class="form-check-label">Invert</span>
+      </label>
+    </div>
+    <button class="btn btn-primary w-100" type="submit"><i class="bi bi-magic"></i> Create Image Job</button>
+  </form>
+
+  <form class="panel wide" id="manual-job-form">
+    <div class="panel-heading">
+      <div>
+        <h2>Manual G-code</h2>
+        <span>Paste or edit a job</span>
+      </div>
+      <i class="bi bi-code-slash"></i>
+    </div>
+    <input class="form-control" name="name" value="Manual engraving job">
+    <textarea class="form-control code-area" name="gcode" rows="12">G21
+G90
+M5
+G0 X10 Y10
+M4 S120
+G1 X60 Y10 F1600
+G1 X60 Y40
+G1 X10 Y40
+G1 X10 Y10
+M5</textarea>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Job</button>
+  </form>
+</section>
+{% endblock %}

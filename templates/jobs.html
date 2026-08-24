@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Jobs - Laser Engraver Studio{% endblock %}
+{% block page_title %}Jobs{% endblock %}
+{% block page_subtitle %}Frame, run, download, and delete saved G-code{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-heading">
+    <div>
+      <h2>Saved Jobs</h2>
+      <span id="jobs-count">0 jobs</span>
+    </div>
+    <button class="btn btn-outline-secondary" id="refresh-jobs"><i class="bi bi-arrow-repeat"></i></button>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle job-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Source</th>
+          <th>Bounds</th>
+          <th>Power</th>
+          <th>Created</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="jobs-list"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-heading">
+    <div>
+      <h2>Preview</h2>
+      <span id="preview-title">Select a job</span>
+    </div>
+    <i class="bi bi-filetype-gcode"></i>
+  </div>
+  <pre class="code-preview" id="gcode-preview"></pre>
+</section>
+{% endblock %}
