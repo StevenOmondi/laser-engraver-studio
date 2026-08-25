@@ -12,7 +12,7 @@ from laserengraver.core.gcode import frame_gcode, gcode_to_svg, line_may_fire_la
 from laserengraver.core.image_to_gcode import image_from_upload, image_to_scanline_gcode, text_to_image
 from laserengraver.core.jobs import JobRecord, JobRunner, JobStore
 from laserengraver.core.profiles import LS_ESP32_PRO_V22, LT_20W_A
-from laserengraver.core.safety import SafetyLatch
+from laserengraver.core.safety import REQUIRED_CHECKS, SafetyLatch
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -27,7 +27,7 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 store = JobStore(JOBS_DIR)
 runner = JobRunner()
 safety = SafetyLatch()
-controller = SimulatorController()
+controller = GrblSerialController()
 
 
 def default_settings() -> dict:
@@ -43,10 +43,9 @@ def default_settings() -> dict:
         },
         "connection": {
             "auto_connect": True,
-            "mode": "simulator",
+            "mode": "serial",
             "port": "",
             "baud": LS_ESP32_PRO_V22.default_baud,
-            "fallback_to_simulator": True,
         },
     }
 
@@ -97,10 +96,22 @@ def resolve_serial_port(port: str | None) -> str | None:
     return None
 
 
+def simulation_allowed() -> bool:
+    return bool(app.config.get("TESTING") or os.environ.get("LASER_STUDIO_ALLOW_SIMULATOR") == "1")
+
+
+def normalize_connection_mode(mode: str | None) -> str:
+    if mode == "simulator" and simulation_allowed():
+        return "simulator"
+    return "serial"
+
+
 def connect_controller(mode: str, port: str | None, baud: int):
     global controller
-    normalized_mode = "serial" if mode == "serial" else "simulator"
+    normalized_mode = normalize_connection_mode(mode)
     resolved_port = resolve_serial_port(port) if normalized_mode == "serial" else None
+    if normalized_mode == "serial" and not resolved_port:
+        raise RuntimeError("No USB controller found. Plug in the board, then refresh ports.")
     next_controller = GrblSerialController() if normalized_mode == "serial" else SimulatorController()
     if controller.connected:
         controller.disconnect()
@@ -111,7 +122,7 @@ def connect_controller(mode: str, port: str | None, baud: int):
 
 
 def remember_connection(mode: str, port: str | None, baud: int, auto_connect: bool) -> None:
-    normalized_mode = "serial" if mode == "serial" else "simulator"
+    normalized_mode = normalize_connection_mode(mode)
     settings["connection"].update(
         {
             "auto_connect": bool(auto_connect),
@@ -126,23 +137,19 @@ def remember_connection(mode: str, port: str | None, baud: int, auto_connect: bo
 def startup_connect() -> None:
     global controller
     connection = settings.get("connection", {})
-    mode = connection.get("mode", "simulator")
+    mode = connection.get("mode", "serial")
     port = connection.get("port") or None
     baud = int(connection.get("baud") or settings["machine"]["default_baud"])
     if not connection.get("auto_connect", True):
-        controller.connect()
-        controller.log("Simulator ready; auto-connect is off")
+        controller.log("Auto-connect is off")
         return
     try:
         connect_controller(mode, port, baud)
         controller.log(f"Auto-connected to {controller.port or controller.mode}")
     except Exception as exc:
-        controller = SimulatorController()
-        controller.connect()
+        controller = GrblSerialController()
         safety.disarm()
         controller.log(f"Auto-connect failed: {exc}")
-        if connection.get("fallback_to_simulator", True):
-            controller.log("Simulator connected as fallback")
 
 
 def ensure_demo_files() -> None:
@@ -166,7 +173,7 @@ def fail(message: str, status: int = 400):
 
 def require_connected():
     if not controller.connected:
-        raise RuntimeError("Connect to the simulator or controller first.")
+        raise RuntimeError("Connect to the controller first.")
 
 
 def require_idle():
@@ -261,7 +268,7 @@ def api_connect():
     try:
         require_idle()
         data = request.get_json(force=True)
-        mode = data.get("mode", "simulator")
+        mode = data.get("mode", "serial")
         baud = int(data.get("baud") or settings["machine"]["default_baud"])
         auto_connect = request_bool("auto_connect", settings["connection"].get("auto_connect", True))
         connect_controller(mode, data.get("port"), baud)
@@ -287,7 +294,10 @@ def api_arm():
     try:
         require_connected()
         data = request.get_json(force=True)
-        safety.arm(data.get("checklist", {}), int(data.get("minutes", 8)))
+        checklist = data.get("checklist", {})
+        if data.get("safety_ready"):
+            checklist = {key: True for key in REQUIRED_CHECKS}
+        safety.arm(checklist, int(data.get("minutes", 8)))
         return ok(safety=safety.snapshot())
     except Exception as exc:
         return fail(str(exc))

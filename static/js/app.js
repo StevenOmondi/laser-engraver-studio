@@ -125,7 +125,7 @@ async function loadPorts() {
   if (!select) return;
   const savedPort = select.dataset.selectedPort || "";
   let matchedSavedPort = !savedPort;
-  select.innerHTML = `<option value="">Simulator only</option>`;
+  select.innerHTML = `<option value="">Auto detect USB</option>`;
   try {
     const payload = await api("/api/ports");
     payload.ports.forEach((port) => {
@@ -188,14 +188,10 @@ function bindGlobalActions() {
     armForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = new FormData(armForm);
-      const checklist = {};
-      ["eye_protection", "ventilation", "fire_watch", "material", "enclosure"].forEach((key) => {
-        checklist[key] = data.get(key) === "on";
-      });
       try {
         await api("/api/arm", {
           method: "POST",
-          body: { checklist, minutes: Number(data.get("minutes") || 8) },
+          body: { safety_ready: data.get("safety_ready") === "on", minutes: Number(data.get("minutes") || 8) },
         });
         state.armModal.hide();
         armForm.reset();
@@ -224,7 +220,7 @@ function bindDashboard() {
         await api("/api/connect", {
           method: "POST",
           body: {
-            mode: data.get("mode"),
+            mode: data.get("mode") || "serial",
             port: document.getElementById("serial-port").value,
             baud: document.getElementById("baud").value,
             auto_connect: document.getElementById("auto-connect")?.checked ?? true,

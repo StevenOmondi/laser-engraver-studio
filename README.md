@@ -2,14 +2,13 @@
 
 Local Python laser engraver software for an LS ESP32 Pro V2.2 style GRBL/FluidNC controller and a LASER TREE LT-20W-A module.
 
-The app starts in simulator mode by default. Real laser output is blocked unless the controller is connected and the safety latch is armed from the UI checklist.
+The app auto-connects to the USB controller when available. Real laser output is blocked unless the controller is connected and the safety latch is armed from the UI.
 
 ## Features
 
 - Flask web app with Bootstrap sidebar UI
-- Simulator mode for dry demos without hardware
 - USB serial streaming for GRBL-style controllers
-- Auto-connect remembers the last successful USB/simulator choice, with simulator fallback
+- Auto-connect remembers the last successful USB controller
 - LS ESP32 Pro V2.2 machine profile
 - LT-20W-A laser profile with S0-S1000 PWM defaults
 - Safety latch, disarm, stop, feed hold, resume, unlock, home, zero, and jog controls
@@ -60,7 +59,7 @@ Laser defaults:
 
 - Confirm the board firmware understands GRBL-style commands before running a job.
 - Confirm the LT-20W-A PWM/GND/V+ pin order before powering the module.
-- Start with the simulator, then a dry frame, then low-power scrap material.
+- Start with a dry frame, then low-power scrap material.
 - Keep eyewear, ventilation, enclosure/shielding, clamped material, and fire watch in place.
 - Use `M8`/`M9` only if your firmware and wiring map air assist to those commands.
 

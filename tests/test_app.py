@@ -15,6 +15,7 @@ class AppTests(unittest.TestCase):
         for job_id in self.created_jobs:
             store.delete_job(job_id)
         laser_app.controller.active_pins = ()
+        laser_app.safety.disarm()
         laser_app.settings["connection"] = self.original_connection
 
     def test_core_pages_render(self):
@@ -60,6 +61,14 @@ class AppTests(unittest.TestCase):
         self.assertEqual(laser_app.settings["connection"]["mode"], "simulator")
         self.assertEqual(laser_app.settings["connection"]["baud"], 115200)
         self.assertFalse(laser_app.settings["connection"]["auto_connect"])
+
+    def test_simple_arm_confirmation_sets_safety_latch(self):
+        self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
+
+        response = self.client.post("/api/arm", json={"safety_ready": True, "minutes": 1})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["safety"]["armed"])
 
     def test_run_blocks_when_limit_switch_is_active(self):
         self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})

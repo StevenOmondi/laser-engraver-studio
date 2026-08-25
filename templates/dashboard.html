@@ -27,7 +27,7 @@
       <span>3</span>
       <div>
         <strong>Arm only when ready</strong>
-        <p>Laser stays disabled until the checklist is complete.</p>
+        <p>Laser stays disabled until safety is confirmed.</p>
       </div>
       <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#armModal"><i class="bi bi-shield-fill-check"></i> Arm</button>
     </div>
@@ -42,11 +42,10 @@
       <i class="bi bi-router"></i>
     </div>
     <form id="connect-form" class="stack">
-      <div class="segmented">
-        <input class="btn-check" type="radio" name="mode" id="mode-sim" value="simulator" {% if saved_connection.get("mode") != "serial" %}checked{% endif %}>
-        <label class="btn btn-outline-primary" for="mode-sim"><i class="bi bi-cpu"></i> Simulator</label>
-        <input class="btn-check" type="radio" name="mode" id="mode-serial" value="serial" {% if saved_connection.get("mode") == "serial" %}checked{% endif %}>
-        <label class="btn btn-outline-primary" for="mode-serial"><i class="bi bi-usb-plug"></i> USB</label>
+      <input type="hidden" name="mode" value="serial">
+      <div class="connection-mode">
+        <i class="bi bi-usb-plug"></i>
+        <span>USB controller</span>
       </div>
       <div class="row g-2">
         <div class="col-8">
