@@ -13,7 +13,7 @@ The app starts in simulator mode by default. Real laser output is blocked unless
 - LT-20W-A laser profile with S0-S1000 PWM defaults
 - Safety latch, disarm, stop, feed hold, resume, unlock, home, zero, and jog controls
 - Live limit-switch state for X/Y/Z plus guarded homing and hard-limit setup
-- Demo job generator for alignment, power/speed, grayscale, air-assist cut, and vector line-art
+- Demo job generator for alignment, power/speed, grayscale, air-assist cut ladders, kerf strips, slots, circles, and vector line-art
 - Text-to-raster and image-to-G-code generators
 - Saved job list with dry-frame, run, download, preview, and delete actions
 - Console for GRBL commands with laser-power guardrails
@@ -71,6 +71,11 @@ The app can generate these from Designer:
 - LT-20W-A power/speed grid
 - LT-20W-A grayscale ramp
 - Air-assist square cut
+- Air-assist pass ladder
+- Air-assist speed ladder
+- Air-assist kerf strips
+- Air-assist slot fit test
+- Air-assist circle cut test
 - Line-art badge
 
 The same generated examples are also written to `demo_examples/` when the app starts.
