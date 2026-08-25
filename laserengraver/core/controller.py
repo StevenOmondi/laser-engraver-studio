@@ -295,12 +295,27 @@ class GrblSerialController(BaseController):
                 self._mark_serial_fault(exc)
                 raise
 
+    def _poll_status(self, timeout: float = 1.0) -> None:
+        if not self._serial:
+            return
+        self._serial.write(b"?")
+        self._serial.flush()
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            response = self._readline()
+            if not response:
+                continue
+            if response.startswith("<"):
+                self._parse_status_line(response)
+                self.last_response = response
+                return
+
     def status(self) -> ControllerStatus:
         if self.connected:
             try:
-                self.send_line("?", timeout=1.0)
+                self._poll_status(timeout=1.0)
             except Exception as exc:  # status polling should not break the UI
-                self.last_response = str(exc)
+                self._mark_serial_fault(exc)
         return super().status()
 
     def _parse_status_line(self, line: str) -> None:

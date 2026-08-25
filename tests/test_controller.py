@@ -14,6 +14,26 @@ class FailingSerial:
         pass
 
 
+class StatusSerial:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.writes = []
+
+    def write(self, payload):
+        self.writes.append(payload)
+
+    def flush(self):
+        pass
+
+    def readline(self):
+        if not self.responses:
+            return b""
+        return self.responses.pop(0)
+
+    def close(self):
+        pass
+
+
 class ControllerStatusTests(unittest.TestCase):
     def test_status_parser_tracks_active_limit_pins(self):
         controller = GrblSerialController()
@@ -48,6 +68,20 @@ class ControllerStatusTests(unittest.TestCase):
         self.assertFalse(status["connected"])
         self.assertEqual(status["state"], "Disconnected")
         self.assertEqual(status["active_pins"], [])
+
+    def test_status_poll_does_not_fill_command_log(self):
+        controller = GrblSerialController()
+        controller.connected = True
+        controller.state = "Idle"
+        controller.port = "COM_TEST"
+        controller._serial = StatusSerial([b"<Idle|MPos:1.000,2.000,0.000|FS:0,0|Pn:X>\n"])
+
+        status = controller.status().to_dict()
+
+        self.assertEqual(controller._serial.writes, [b"?"])
+        self.assertEqual(controller.log_tail(), [])
+        self.assertEqual(status["active_pins"], ["X"])
+        self.assertTrue(status["limit_switches"]["x"])
 
 
 if __name__ == "__main__":

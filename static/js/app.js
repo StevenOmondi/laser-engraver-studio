@@ -58,6 +58,10 @@ function formatPos(pos) {
   return `X${Number(pos.x).toFixed(3)} Y${Number(pos.y).toFixed(3)} Z${Number(pos.z).toFixed(3)}`;
 }
 
+function controllerModeLabel(ctrl) {
+  return ctrl?.mode === "serial" ? "USB" : ctrl?.mode || "USB";
+}
+
 async function refreshStatus() {
   try {
     const payload = await api("/api/status");
@@ -67,7 +71,7 @@ async function refreshStatus() {
     const run = payload.runner;
     setPill(
       "connection-pill",
-      ctrl.connected ? `${ctrl.mode}: ${ctrl.state}` : "Disconnected",
+      ctrl.connected ? `${controllerModeLabel(ctrl)}: ${ctrl.state}` : "Disconnected",
       ctrl.connected ? "ok" : "danger",
     );
     setPill(
@@ -81,7 +85,7 @@ async function refreshStatus() {
       run.busy ? "ok" : "",
     );
     const controllerState = document.getElementById("controller-state");
-    if (controllerState) controllerState.textContent = ctrl.connected ? `${ctrl.mode} on ${ctrl.port}` : "Disconnected";
+    if (controllerState) controllerState.textContent = ctrl.connected ? `${controllerModeLabel(ctrl)} on ${ctrl.port}` : "Disconnected";
     const machinePosition = document.getElementById("machine-position");
     if (machinePosition) machinePosition.textContent = formatPos(ctrl.mpos);
     const safetyState = document.getElementById("safety-state");
