@@ -70,35 +70,12 @@
         </div>
         <div class="status-strip">
           <span class="status-pill" id="connection-pill"><i class="bi bi-usb-symbol"></i><span>Disconnected</span></span>
-          <span class="status-pill" id="safety-pill"><i class="bi bi-shield-lock"></i><span>Disarmed</span></span>
           <span class="status-pill" id="job-pill"><i class="bi bi-activity"></i><span>Idle</span></span>
         </div>
       </header>
 
       {% block content %}{% endblock %}
     </main>
-
-    <div class="modal fade" id="armModal" tabindex="-1" aria-labelledby="armModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content" id="arm-form">
-          <div class="modal-header">
-            <h5 class="modal-title" id="armModalLabel">Arm Laser</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" name="minutes" value="8">
-            <label class="form-check arm-confirm">
-              <input class="form-check-input" type="checkbox" name="safety_ready">
-              <span class="form-check-label">Eyewear, ventilation, material, enclosure, and fire watch are ready.</span>
-            </label>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-danger"><i class="bi bi-shield-fill-check"></i> Arm</button>
-          </div>
-        </form>
-      </div>
-    </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
       <div id="app-toast" class="toast align-items-center" role="status" aria-live="polite" aria-atomic="true">

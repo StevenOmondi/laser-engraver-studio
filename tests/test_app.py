@@ -15,7 +15,6 @@ class AppTests(unittest.TestCase):
         for job_id in self.created_jobs:
             store.delete_job(job_id)
         laser_app.controller.active_pins = ()
-        laser_app.safety.disarm()
         laser_app.settings["connection"] = self.original_connection
 
     def test_core_pages_render(self):
@@ -24,7 +23,7 @@ class AppTests(unittest.TestCase):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
 
-    def test_demo_job_preview_and_disarmed_run_block(self):
+    def test_demo_job_preview_and_unconfirmed_run_block(self):
         self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
         response = self.client.post("/api/examples/alignment_frame/create")
         self.assertEqual(response.status_code, 200)
@@ -37,6 +36,7 @@ class AppTests(unittest.TestCase):
 
         blocked = self.client.post(f"/api/jobs/{job_id}/run")
         self.assertEqual(blocked.status_code, 403)
+        self.assertIn("Confirm safety ready", blocked.get_json()["message"])
 
     def test_limits_endpoint_applies_safe_settings(self):
         self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
@@ -62,13 +62,13 @@ class AppTests(unittest.TestCase):
         self.assertEqual(laser_app.settings["connection"]["baud"], 115200)
         self.assertFalse(laser_app.settings["connection"]["auto_connect"])
 
-    def test_simple_arm_confirmation_sets_safety_latch(self):
+    def test_laser_power_command_requires_safety_ready(self):
         self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
 
-        response = self.client.post("/api/arm", json={"safety_ready": True, "minutes": 1})
+        response = self.client.post("/api/command", json={"command": "M4 S10"})
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.get_json()["safety"]["armed"])
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Confirm safety ready", response.get_json()["message"])
 
     def test_run_blocks_when_limit_switch_is_active(self):
         self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
@@ -77,16 +77,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         job_id = response.get_json()["job"]["id"]
         self.created_jobs.append(job_id)
-        checklist = {
-            "eye_protection": True,
-            "ventilation": True,
-            "fire_watch": True,
-            "material": True,
-            "enclosure": True,
-        }
-        self.client.post("/api/arm", json={"checklist": checklist, "minutes": 1})
-
-        blocked = self.client.post(f"/api/jobs/{job_id}/run")
+        blocked = self.client.post(f"/api/jobs/{job_id}/run", json={"safety_ready": True})
 
         self.assertEqual(blocked.status_code, 400)
         self.assertIn("Active limit switch", blocked.get_json()["message"])
@@ -107,16 +98,7 @@ class AppTests(unittest.TestCase):
     def test_laser_power_command_blocks_when_limit_switch_is_active(self):
         self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
         laser_app.controller.active_pins = ("Z",)
-        checklist = {
-            "eye_protection": True,
-            "ventilation": True,
-            "fire_watch": True,
-            "material": True,
-            "enclosure": True,
-        }
-        self.client.post("/api/arm", json={"checklist": checklist, "minutes": 1})
-
-        blocked = self.client.post("/api/command", json={"command": "M4 S10"})
+        blocked = self.client.post("/api/command", json={"command": "M4 S10", "safety_ready": True})
 
         self.assertEqual(blocked.status_code, 400)
         self.assertIn("Active limit switch", blocked.get_json()["message"])

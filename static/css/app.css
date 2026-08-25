@@ -284,7 +284,6 @@ body {
 
 .button-row,
 .machine-actions,
-.safety-actions,
 .quick-commands,
 .two-checks {
   display: flex;
@@ -536,7 +535,7 @@ body {
 }
 
 .connection-mode,
-.arm-confirm {
+.safety-ready-check {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -552,7 +551,7 @@ body {
   background: #f6fbfd;
 }
 
-.arm-confirm {
+.safety-ready-check {
   line-height: 1.35;
 }
 

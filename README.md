@@ -2,7 +2,7 @@
 
 Local Python laser engraver software for an LS ESP32 Pro V2.2 style GRBL/FluidNC controller and a LASER TREE LT-20W-A module.
 
-The app auto-connects to the USB controller when available. Real laser output is blocked unless the controller is connected and the safety latch is armed from the UI.
+The app auto-connects to the USB controller when available. Real laser output is blocked unless the controller is connected and the safety-ready check is confirmed for that action.
 
 ## Features
 
@@ -11,7 +11,7 @@ The app auto-connects to the USB controller when available. Real laser output is
 - Auto-connect remembers the last successful USB controller
 - LS ESP32 Pro V2.2 machine profile
 - LT-20W-A laser profile with S0-S1000 PWM defaults
-- Safety latch, disarm, stop, feed hold, resume, unlock, home, zero, and jog controls
+- Safety-ready checks, emergency stop, feed hold, resume, unlock, home, zero, and jog controls
 - Live limit-switch state for X/Y/Z plus guarded homing and hard-limit setup
 - Demo job generator for alignment, power/speed, grayscale, air-assist cut ladders, kerf strips, slots, circles, and vector line-art
 - Text-to-raster and image-to-G-code generators

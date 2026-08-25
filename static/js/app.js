@@ -1,7 +1,6 @@
 const state = {
   status: null,
   toast: null,
-  armModal: null,
 };
 
 function page() {
@@ -62,22 +61,25 @@ function controllerModeLabel(ctrl) {
   return ctrl?.mode === "serial" ? "USB" : ctrl?.mode || "USB";
 }
 
+function safetyReadyChecked() {
+  return [...document.querySelectorAll("[data-safety-ready]")].some((input) => input.checked);
+}
+
+function updateSafetyReadyLabels() {
+  const safetyState = document.getElementById("safety-state");
+  if (safetyState) safetyState.textContent = safetyReadyChecked() ? "Ready checked" : "Check before output";
+}
+
 async function refreshStatus() {
   try {
     const payload = await api("/api/status");
     state.status = payload;
     const ctrl = payload.controller;
-    const safe = payload.safety;
     const run = payload.runner;
     setPill(
       "connection-pill",
       ctrl.connected ? `${controllerModeLabel(ctrl)}: ${ctrl.state}` : "Disconnected",
       ctrl.connected ? "ok" : "danger",
-    );
-    setPill(
-      "safety-pill",
-      safe.armed ? `Armed ${Math.ceil(safe.remaining_seconds / 60)}m` : "Disarmed",
-      safe.armed ? "danger" : "warn",
     );
     setPill(
       "job-pill",
@@ -88,8 +90,7 @@ async function refreshStatus() {
     if (controllerState) controllerState.textContent = ctrl.connected ? `${controllerModeLabel(ctrl)} on ${ctrl.port}` : "Disconnected";
     const machinePosition = document.getElementById("machine-position");
     if (machinePosition) machinePosition.textContent = formatPos(ctrl.mpos);
-    const safetyState = document.getElementById("safety-state");
-    if (safetyState) safetyState.textContent = safe.armed ? `Armed for ${safe.remaining_seconds}s` : "Disarmed";
+    updateSafetyReadyLabels();
     const jobName = document.getElementById("active-job-name");
     if (jobName) jobName.textContent = run.active_job ? run.active_job.name : "No job loaded";
     const progressBar = document.getElementById("job-progress-bar");
@@ -152,8 +153,6 @@ async function loadPorts() {
 }
 
 function bindGlobalActions() {
-  state.armModal = new bootstrap.Modal(document.getElementById("armModal"));
-
   document.querySelectorAll("[data-api-post]").forEach((button) => {
     button.addEventListener("click", async () => {
       try {
@@ -187,29 +186,13 @@ function bindGlobalActions() {
     });
   });
 
-  const armForm = document.getElementById("arm-form");
-  if (armForm) {
-    armForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const data = new FormData(armForm);
-      try {
-        await api("/api/arm", {
-          method: "POST",
-          body: { safety_ready: data.get("safety_ready") === "on", minutes: Number(data.get("minutes") || 8) },
-        });
-        state.armModal.hide();
-        armForm.reset();
-        showToast("Laser armed");
-        await refreshStatus();
-      } catch (error) {
-        showToast(error.message);
-      }
-    });
-  }
+  document.querySelectorAll("[data-safety-ready]").forEach((input) => {
+    input.addEventListener("change", updateSafetyReadyLabels);
+  });
 }
 
 async function sendCommand(command) {
-  const payload = await api("/api/command", { method: "POST", body: { command } });
+  const payload = await api("/api/command", { method: "POST", body: { command, safety_ready: safetyReadyChecked() } });
   showToast(payload.response || "Command sent");
   await refreshStatus();
 }
@@ -241,7 +224,7 @@ function bindDashboard() {
   document.getElementById("refresh-ports")?.addEventListener("click", loadPorts);
   document.getElementById("focus-pulse")?.addEventListener("click", async () => {
     try {
-      await api("/api/laser/pulse", { method: "POST", body: { power: 8, duration: 0.12 } });
+      await api("/api/laser/pulse", { method: "POST", body: { power: 8, duration: 0.12, safety_ready: safetyReadyChecked() } });
       showToast("Focus pulse sent");
       await refreshStatus();
     } catch (error) {
@@ -432,7 +415,7 @@ async function frameJob(id) {
 
 async function runJob(id) {
   try {
-    await api(`/api/jobs/${encodeURIComponent(id)}/run`, { method: "POST" });
+    await api(`/api/jobs/${encodeURIComponent(id)}/run`, { method: "POST", body: { safety_ready: safetyReadyChecked() } });
     showToast("Job started");
     await refreshStatus();
   } catch (error) {

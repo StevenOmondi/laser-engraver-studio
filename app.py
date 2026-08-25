@@ -12,7 +12,6 @@ from laserengraver.core.gcode import frame_gcode, gcode_to_svg, line_may_fire_la
 from laserengraver.core.image_to_gcode import image_from_upload, image_to_scanline_gcode, text_to_image
 from laserengraver.core.jobs import JobRecord, JobRunner, JobStore
 from laserengraver.core.profiles import LS_ESP32_PRO_V22, LT_20W_A
-from laserengraver.core.safety import REQUIRED_CHECKS, SafetyLatch
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,7 +25,6 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 store = JobStore(JOBS_DIR)
 runner = JobRunner()
-safety = SafetyLatch()
 controller = GrblSerialController()
 
 
@@ -117,7 +115,6 @@ def connect_controller(mode: str, port: str | None, baud: int):
         controller.disconnect()
     next_controller.connect(resolved_port, baud)
     controller = next_controller
-    safety.disarm()
     return controller
 
 
@@ -148,7 +145,6 @@ def startup_connect() -> None:
         controller.log(f"Auto-connected to {controller.port or controller.mode}")
     except Exception as exc:
         controller = GrblSerialController()
-        safety.disarm()
         controller.log(f"Auto-connect failed: {exc}")
 
 
@@ -169,6 +165,10 @@ def ok(**payload):
 
 def fail(message: str, status: int = 400):
     return jsonify({"ok": False, "message": message}), status
+
+
+class SafetyReadyRequired(RuntimeError):
+    pass
 
 
 def require_connected():
@@ -214,6 +214,14 @@ def request_bool(name: str, default: bool = False) -> bool:
     return str(value).lower() in {"1", "true", "yes", "on"}
 
 
+def require_safety_ready(data: dict | None = None) -> None:
+    source = data if data is not None else (request.get_json(silent=True) or {})
+    value = source.get("safety_ready", False)
+    ready = value if isinstance(value, bool) else str(value).lower() in {"1", "true", "yes", "on"}
+    if not ready:
+        raise SafetyReadyRequired("Confirm safety ready before laser output.")
+
+
 @app.context_processor
 def inject_globals():
     return {
@@ -253,7 +261,6 @@ def api_status():
     return ok(
         controller=controller.status().to_dict(),
         runner=runner.snapshot(),
-        safety=safety.snapshot(),
         log=controller.log_tail(),
     )
 
@@ -283,36 +290,9 @@ def api_disconnect():
     try:
         require_idle()
         controller.disconnect()
-        safety.disarm()
         return ok()
     except Exception as exc:
         return fail(str(exc))
-
-
-@app.post("/api/arm")
-def api_arm():
-    try:
-        require_connected()
-        data = request.get_json(force=True)
-        checklist = data.get("checklist", {})
-        if data.get("safety_ready"):
-            checklist = {key: True for key in REQUIRED_CHECKS}
-        safety.arm(checklist, int(data.get("minutes", 8)))
-        return ok(safety=safety.snapshot())
-    except Exception as exc:
-        return fail(str(exc))
-
-
-@app.post("/api/disarm")
-def api_disarm():
-    safety.disarm()
-    try:
-        if controller.connected:
-            controller.send_line("M5", timeout=2)
-            controller.send_line("M9", timeout=2)
-    except Exception:
-        pass
-    return ok(safety=safety.snapshot())
 
 
 @app.post("/api/setup/apply")
@@ -398,10 +378,11 @@ def api_command():
             return fail("Command is empty.")
         if line_may_fire_laser(command):
             require_no_active_limits()
-            if not safety.is_armed():
-                return fail("Laser-power commands require the safety latch to be armed.", 403)
+            require_safety_ready(data)
         response = controller.send_line(command)
         return ok(response=response)
+    except SafetyReadyRequired as exc:
+        return fail(str(exc), 403)
     except Exception as exc:
         return fail(str(exc))
 
@@ -436,8 +417,8 @@ def api_laser_pulse():
         require_connected()
         require_idle()
         require_no_active_limits()
-        if not safety.is_armed():
-            return fail("Arm the safety latch before any laser pulse.", 403)
+        data = request.get_json(silent=True) or {}
+        require_safety_ready(data)
         power = int(request_number("power", settings["laser"]["focus_power"], 1, min(25, settings["machine"]["pwm_max"])))
         duration = request_number("duration", 0.12, 0.03, 0.25)
         responses = [
@@ -446,13 +427,14 @@ def api_laser_pulse():
             controller.send_line("M5", timeout=2),
         ]
         return ok(responses=responses)
+    except SafetyReadyRequired as exc:
+        return fail(str(exc), 403)
     except Exception as exc:
         return fail(str(exc))
 
 
 @app.post("/api/estop")
 def api_estop():
-    safety.disarm()
     try:
         if controller.connected:
             runner.stop(controller)
@@ -473,7 +455,6 @@ def api_job_control(action: str):
         elif action == "resume":
             runner.resume(controller)
         elif action == "stop":
-            safety.disarm()
             runner.stop(controller)
         else:
             return fail("Unknown job control.")
@@ -570,13 +551,15 @@ def api_job_run(job_id: str):
         require_connected()
         require_idle()
         require_no_active_limits()
-        if not safety.is_armed():
-            return fail("Arm the safety latch before running a laser job.", 403)
+        data = request.get_json(silent=True) or {}
+        require_safety_ready(data)
         record, gcode = store.get_job(job_id)
-        runner.start(record, gcode, controller, on_complete=safety.disarm)
+        runner.start(record, gcode, controller)
         return ok(runner=runner.snapshot())
     except FileNotFoundError:
         return fail("Job was not found.", 404)
+    except SafetyReadyRequired as exc:
+        return fail(str(exc), 403)
     except Exception as exc:
         return fail(str(exc))
 
