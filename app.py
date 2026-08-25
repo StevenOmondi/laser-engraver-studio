@@ -97,6 +97,12 @@ def require_idle():
         raise RuntimeError("A job is already running.")
 
 
+def active_limit_axes() -> list[str]:
+    status = controller.status().to_dict()
+    switches = status.get("limit_switches", {})
+    return [axis.upper() for axis in ("x", "y", "z") if switches.get(axis)]
+
+
 def request_number(name: str, default: float, low: float, high: float) -> float:
     source = request.form if request.form else (request.get_json(silent=True) or {})
     try:
@@ -225,6 +231,65 @@ def api_apply_setup():
         for command in settings["machine"]["setup_commands"]:
             responses.append({"command": command, "response": controller.send_line(command)})
         return ok(responses=responses)
+    except Exception as exc:
+        return fail(str(exc))
+
+
+@app.get("/api/limits")
+def api_limits():
+    return ok(
+        active_axes=active_limit_axes(),
+        controller=controller.status().to_dict(),
+        notes=[
+            "$21 enables hard limits.",
+            "$22 enables homing.",
+            "$20 enables soft limits after homing is configured.",
+            "$5 inverts limit pins and is not changed automatically.",
+        ],
+    )
+
+
+@app.post("/api/limits/apply")
+def api_apply_limits():
+    try:
+        require_connected()
+        require_idle()
+        data = request.get_json(silent=True) or {}
+        enable_homing = data.get("homing", True)
+        enable_hard_limits = data.get("hard_limits", True)
+        enable_soft_limits = data.get("soft_limits", False)
+        force = data.get("force", False)
+        active_axes = active_limit_axes()
+        responses = []
+        skipped = []
+        warnings = []
+
+        if enable_homing:
+            responses.append({"command": "$22=1", "response": controller.send_line("$22=1")})
+
+        if enable_hard_limits:
+            if active_axes and not force:
+                skipped.append("$21=1")
+                warnings.append(
+                    f"Hard limits were not enabled because active switch(es) were detected: {', '.join(active_axes)}."
+                )
+            else:
+                responses.append({"command": "$21=1", "response": controller.send_line("$21=1")})
+
+        if enable_soft_limits:
+            if not enable_homing:
+                skipped.append("$20=1")
+                warnings.append("Soft limits need homing enabled first.")
+            else:
+                responses.append({"command": "$20=1", "response": controller.send_line("$20=1")})
+
+        return ok(
+            active_axes=active_axes,
+            responses=responses,
+            skipped=skipped,
+            warnings=warnings,
+            controller=controller.status().to_dict(),
+        )
     except Exception as exc:
         return fail(str(exc))
 

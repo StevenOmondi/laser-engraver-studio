@@ -12,6 +12,7 @@ The app starts in simulator mode by default. Real laser output is blocked unless
 - LS ESP32 Pro V2.2 machine profile
 - LT-20W-A laser profile with S0-S1000 PWM defaults
 - Safety latch, disarm, stop, feed hold, resume, unlock, home, zero, and jog controls
+- Live limit-switch state for X/Y/Z plus guarded homing and hard-limit setup
 - Demo job generator for alignment, power/speed, grayscale, air-assist cut, and vector line-art
 - Text-to-raster and image-to-G-code generators
 - Saved job list with dry-frame, run, download, preview, and delete actions

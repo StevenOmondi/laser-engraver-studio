@@ -30,8 +30,10 @@ class ControllerStatus:
     feed: int
     spindle: int
     last_response: str
+    active_pins: tuple[str, ...]
 
     def to_dict(self) -> dict:
+        active = set(self.active_pins)
         return {
             "mode": self.mode,
             "connected": self.connected,
@@ -42,6 +44,12 @@ class ControllerStatus:
             "feed": self.feed,
             "spindle": self.spindle,
             "last_response": self.last_response,
+            "active_pins": list(self.active_pins),
+            "limit_switches": {
+                "x": "X" in active,
+                "y": "Y" in active,
+                "z": "Z" in active,
+            },
         }
 
 
@@ -59,6 +67,7 @@ class BaseController:
         self.feed = 0
         self.spindle = 0
         self.last_response = ""
+        self.active_pins: tuple[str, ...] = ()
 
     def log(self, entry: str) -> None:
         stamp = time.strftime("%H:%M:%S")
@@ -89,6 +98,7 @@ class BaseController:
             feed=self.feed,
             spindle=self.spindle,
             last_response=self.last_response,
+            active_pins=self.active_pins,
         )
 
     def feed_hold(self) -> None:
@@ -275,6 +285,7 @@ class GrblSerialController(BaseController):
     def _parse_status_line(self, line: str) -> None:
         body = line.strip("<>")
         parts = body.split("|")
+        saw_pins = False
         if parts:
             self.state = parts[0]
         for part in parts[1:]:
@@ -288,6 +299,12 @@ class GrblSerialController(BaseController):
                     self.feed = int(float(values[0]))
                 if len(values) > 1:
                     self.spindle = int(float(values[1]))
+            elif part.startswith("Pn:"):
+                saw_pins = True
+                pins = part.split(":", 1)[1].upper()
+                self.active_pins = tuple(pin for pin in pins if pin.isalpha())
+        if not saw_pins:
+            self.active_pins = ()
 
 
 def available_ports() -> list[dict]:

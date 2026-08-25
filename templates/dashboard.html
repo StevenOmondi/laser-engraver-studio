@@ -88,6 +88,26 @@
     </div>
   </div>
 
+  <div class="panel limits-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Limit Switches</h2>
+        <span id="limits-state">No active switches</span>
+      </div>
+      <i class="bi bi-sign-stop"></i>
+    </div>
+    <div class="limit-grid">
+      <div class="limit-chip" id="limit-x">X</div>
+      <div class="limit-chip" id="limit-y">Y</div>
+      <div class="limit-chip" id="limit-z">Z</div>
+    </div>
+    <div class="button-row">
+      <button type="button" class="btn btn-outline-primary" id="enable-limits"><i class="bi bi-toggle-on"></i> Enable Homing + Limits</button>
+      <button type="button" class="btn btn-outline-secondary" data-command="$"><i class="bi bi-question-circle"></i> Help</button>
+    </div>
+    <div class="limit-note" id="limits-note">Hard limits are skipped while a switch is active.</div>
+  </div>
+
   <div class="panel job-panel">
     <div class="panel-heading">
       <div>

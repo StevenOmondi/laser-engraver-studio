@@ -330,6 +330,38 @@ body {
   background: var(--accent-2);
 }
 
+.limit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.limit-chip {
+  display: grid;
+  place-items: center;
+  min-height: 58px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.limit-chip.active {
+  border-color: rgba(180, 35, 24, 0.35);
+  background: #fff0ee;
+  color: var(--danger);
+}
+
+.limit-note {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff7e6;
+  color: #7b4a00;
+  font-size: 0.9rem;
+}
+
 .example-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

@@ -33,6 +33,19 @@ class AppTests(unittest.TestCase):
         blocked = self.client.post(f"/api/jobs/{job_id}/run")
         self.assertEqual(blocked.status_code, 403)
 
+    def test_limits_endpoint_applies_safe_settings(self):
+        self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
+
+        response = self.client.post(
+            "/api/limits/apply",
+            json={"homing": True, "hard_limits": True, "soft_limits": False},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertIn("$22=1", [item["command"] for item in payload["responses"]])
+
 
 if __name__ == "__main__":
     unittest.main()

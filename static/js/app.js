@@ -93,6 +93,7 @@ async function refreshStatus() {
       progressBar.style.width = `${run.percent}%`;
       progressBar.textContent = `${run.percent}%`;
     }
+    updateLimitDisplay(ctrl.limit_switches || {});
     const log = document.getElementById("console-log");
     if (log) {
       log.textContent = payload.log.join("\n");
@@ -103,6 +104,20 @@ async function refreshStatus() {
   } catch (error) {
     setPill("connection-pill", "Offline", "danger");
   }
+}
+
+function updateLimitDisplay(switches) {
+  const active = [];
+  ["x", "y", "z"].forEach((axis) => {
+    const chip = document.getElementById(`limit-${axis}`);
+    if (!chip) return;
+    const isActive = Boolean(switches[axis]);
+    chip.classList.toggle("active", isActive);
+    chip.textContent = `${axis.toUpperCase()} ${isActive ? "ON" : "off"}`;
+    if (isActive) active.push(axis.toUpperCase());
+  });
+  const label = document.getElementById("limits-state");
+  if (label) label.textContent = active.length ? `${active.join(", ")} active` : "No active switches";
 }
 
 async function loadPorts() {
@@ -217,6 +232,22 @@ function bindDashboard() {
     try {
       await api("/api/laser/pulse", { method: "POST", body: { power: 8, duration: 0.12 } });
       showToast("Focus pulse sent");
+      await refreshStatus();
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+
+  document.getElementById("enable-limits")?.addEventListener("click", async () => {
+    try {
+      const payload = await api("/api/limits/apply", {
+        method: "POST",
+        body: { homing: true, hard_limits: true, soft_limits: false },
+      });
+      const message = payload.warnings?.length ? payload.warnings.join(" ") : "Homing and hard limits enabled";
+      showToast(message);
+      const note = document.getElementById("limits-note");
+      if (note) note.textContent = message;
       await refreshStatus();
     } catch (error) {
       showToast(error.message);
