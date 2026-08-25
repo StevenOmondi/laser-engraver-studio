@@ -41,6 +41,13 @@ def default_settings() -> dict:
             "raster_power": LT_20W_A.default_engrave_power,
             "binary_threshold": 170,
         },
+        "connection": {
+            "auto_connect": True,
+            "mode": "simulator",
+            "port": "",
+            "baud": LS_ESP32_PRO_V22.default_baud,
+            "fallback_to_simulator": True,
+        },
     }
 
 
@@ -66,6 +73,76 @@ def save_settings(settings: dict) -> None:
 
 
 settings = load_settings()
+
+
+def persist_settings() -> None:
+    if not app.config.get("TESTING"):
+        save_settings(settings)
+
+
+def likely_serial_port(port: dict) -> bool:
+    text = f"{port.get('device', '')} {port.get('description', '')} {port.get('hwid', '')}".lower()
+    return any(token in text for token in ("usb", "uart", "serial", "ch340", "cp210", "wch", "silicon labs"))
+
+
+def resolve_serial_port(port: str | None) -> str | None:
+    if port:
+        return port
+    ports = available_ports()
+    likely_ports = [item for item in ports if likely_serial_port(item)]
+    if len(likely_ports) == 1:
+        return likely_ports[0]["device"]
+    if len(ports) == 1:
+        return ports[0]["device"]
+    return None
+
+
+def connect_controller(mode: str, port: str | None, baud: int):
+    global controller
+    normalized_mode = "serial" if mode == "serial" else "simulator"
+    resolved_port = resolve_serial_port(port) if normalized_mode == "serial" else None
+    next_controller = GrblSerialController() if normalized_mode == "serial" else SimulatorController()
+    if controller.connected:
+        controller.disconnect()
+    next_controller.connect(resolved_port, baud)
+    controller = next_controller
+    safety.disarm()
+    return controller
+
+
+def remember_connection(mode: str, port: str | None, baud: int, auto_connect: bool) -> None:
+    normalized_mode = "serial" if mode == "serial" else "simulator"
+    settings["connection"].update(
+        {
+            "auto_connect": bool(auto_connect),
+            "mode": normalized_mode,
+            "port": port or "",
+            "baud": int(baud),
+        }
+    )
+    persist_settings()
+
+
+def startup_connect() -> None:
+    global controller
+    connection = settings.get("connection", {})
+    mode = connection.get("mode", "simulator")
+    port = connection.get("port") or None
+    baud = int(connection.get("baud") or settings["machine"]["default_baud"])
+    if not connection.get("auto_connect", True):
+        controller.connect()
+        controller.log("Simulator ready; auto-connect is off")
+        return
+    try:
+        connect_controller(mode, port, baud)
+        controller.log(f"Auto-connected to {controller.port or controller.mode}")
+    except Exception as exc:
+        controller = SimulatorController()
+        controller.connect()
+        safety.disarm()
+        controller.log(f"Auto-connect failed: {exc}")
+        if connection.get("fallback_to_simulator", True):
+            controller.log("Simulator connected as fallback")
 
 
 def ensure_demo_files() -> None:
@@ -181,18 +258,14 @@ def api_ports():
 
 @app.post("/api/connect")
 def api_connect():
-    global controller
     try:
         require_idle()
         data = request.get_json(force=True)
         mode = data.get("mode", "simulator")
         baud = int(data.get("baud") or settings["machine"]["default_baud"])
-        next_controller = GrblSerialController() if mode == "serial" else SimulatorController()
-        if controller.connected:
-            controller.disconnect()
-        next_controller.connect(data.get("port"), baud)
-        controller = next_controller
-        safety.disarm()
+        auto_connect = request_bool("auto_connect", settings["connection"].get("auto_connect", True))
+        connect_controller(mode, data.get("port"), baud)
+        remember_connection(mode, controller.port if controller.mode == "serial" else "", baud, auto_connect)
         return ok(controller=controller.status().to_dict())
     except Exception as exc:
         return fail(str(exc))
@@ -603,6 +676,6 @@ def api_save_settings():
 
 
 if __name__ == "__main__":
-    controller.connect()
+    startup_connect()
     port = int(os.environ.get("LASER_STUDIO_PORT", "5111"))
     app.run(host="127.0.0.1", port=port, debug=False)

@@ -123,6 +123,8 @@ function updateLimitDisplay(switches) {
 async function loadPorts() {
   const select = document.getElementById("serial-port");
   if (!select) return;
+  const savedPort = select.dataset.selectedPort || "";
+  let matchedSavedPort = !savedPort;
   select.innerHTML = `<option value="">Simulator only</option>`;
   try {
     const payload = await api("/api/ports");
@@ -131,7 +133,15 @@ async function loadPorts() {
       option.value = port.device;
       option.textContent = `${port.device} - ${port.description}`;
       select.appendChild(option);
+      if (port.device === savedPort) matchedSavedPort = true;
     });
+    if (savedPort && !matchedSavedPort) {
+      const option = document.createElement("option");
+      option.value = savedPort;
+      option.textContent = `${savedPort} - saved port`;
+      select.appendChild(option);
+    }
+    if (savedPort) select.value = savedPort;
   } catch (error) {
     showToast(error.message);
   }
@@ -217,6 +227,7 @@ function bindDashboard() {
             mode: data.get("mode"),
             port: document.getElementById("serial-port").value,
             baud: document.getElementById("baud").value,
+            auto_connect: document.getElementById("auto-connect")?.checked ?? true,
           },
         });
         showToast("Connected");

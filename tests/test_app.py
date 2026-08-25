@@ -9,11 +9,13 @@ class AppTests(unittest.TestCase):
         app.config["TESTING"] = True
         self.client = app.test_client()
         self.created_jobs: list[str] = []
+        self.original_connection = dict(laser_app.settings.get("connection", {}))
 
     def tearDown(self):
         for job_id in self.created_jobs:
             store.delete_job(job_id)
         laser_app.controller.active_pins = ()
+        laser_app.settings["connection"] = self.original_connection
 
     def test_core_pages_render(self):
         for path in ["/", "/designer", "/jobs", "/console", "/settings"]:
@@ -47,6 +49,17 @@ class AppTests(unittest.TestCase):
         payload = response.get_json()
         self.assertTrue(payload["ok"])
         self.assertIn("$22=1", [item["command"] for item in payload["responses"]])
+
+    def test_connect_remembers_auto_connect_choice(self):
+        response = self.client.post(
+            "/api/connect",
+            json={"mode": "simulator", "baud": 115200, "auto_connect": False},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(laser_app.settings["connection"]["mode"], "simulator")
+        self.assertEqual(laser_app.settings["connection"]["baud"], 115200)
+        self.assertFalse(laser_app.settings["connection"]["auto_connect"])
 
     def test_run_blocks_when_limit_switch_is_active(self):
         self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})

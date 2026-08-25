@@ -4,6 +4,7 @@
 {% block page_subtitle %}Simple controls for connecting, arming, and watching the job{% endblock %}
 
 {% block content %}
+{% set saved_connection = settings.get("connection", {}) %}
 <section class="grid-dashboard">
   <div class="panel quick-panel">
     <div class="quick-step">
@@ -42,21 +43,25 @@
     </div>
     <form id="connect-form" class="stack">
       <div class="segmented">
-        <input class="btn-check" type="radio" name="mode" id="mode-sim" value="simulator" checked>
+        <input class="btn-check" type="radio" name="mode" id="mode-sim" value="simulator" {% if saved_connection.get("mode") != "serial" %}checked{% endif %}>
         <label class="btn btn-outline-primary" for="mode-sim"><i class="bi bi-cpu"></i> Simulator</label>
-        <input class="btn-check" type="radio" name="mode" id="mode-serial" value="serial">
+        <input class="btn-check" type="radio" name="mode" id="mode-serial" value="serial" {% if saved_connection.get("mode") == "serial" %}checked{% endif %}>
         <label class="btn btn-outline-primary" for="mode-serial"><i class="bi bi-usb-plug"></i> USB</label>
       </div>
       <div class="row g-2">
         <div class="col-8">
           <label class="form-label" for="serial-port">Port</label>
-          <select class="form-select" id="serial-port"></select>
+          <select class="form-select" id="serial-port" data-selected-port="{{ saved_connection.get('port', '') }}"></select>
         </div>
         <div class="col-4">
           <label class="form-label" for="baud">Baud</label>
-          <input class="form-control" id="baud" name="baud" value="{{ machine.default_baud }}">
+          <input class="form-control" id="baud" name="baud" value="{{ saved_connection.get('baud') or machine.default_baud }}">
         </div>
       </div>
+      <label class="form-check">
+        <input class="form-check-input" type="checkbox" id="auto-connect" name="auto_connect" {% if saved_connection.get("auto_connect", true) %}checked{% endif %}>
+        <span class="form-check-label">Auto connect on launch</span>
+      </label>
       <div class="button-row">
         <button type="submit" class="btn btn-primary"><i class="bi bi-plug"></i> Connect</button>
         <button type="button" class="btn btn-outline-secondary" id="refresh-ports"><i class="bi bi-arrow-repeat"></i></button>
