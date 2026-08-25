@@ -15,14 +15,15 @@
 
     {% macro nav_items() %}
       <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
-        <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+        <i class="bi bi-play-circle"></i><span>Run</span>
       </a>
       <a class="nav-link {% if active_page == 'designer' %}active{% endif %}" href="{{ url_for('designer') }}">
-        <i class="bi bi-vector-pen"></i><span>Designer</span>
+        <i class="bi bi-plus-square"></i><span>Make</span>
       </a>
       <a class="nav-link {% if active_page == 'jobs' %}active{% endif %}" href="{{ url_for('jobs_page') }}">
         <i class="bi bi-stack"></i><span>Jobs</span>
       </a>
+      <div class="nav-section">Advanced</div>
       <a class="nav-link {% if active_page == 'console' %}active{% endif %}" href="{{ url_for('console_page') }}">
         <i class="bi bi-terminal"></i><span>Console</span>
       </a>

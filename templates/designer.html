@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Designer - Laser Engraver Studio{% endblock %}
-{% block page_title %}Designer{% endblock %}
-{% block page_subtitle %}Generate demo, text, image, and manual G-code jobs{% endblock %}
+{% block title %}Make - Laser Engraver Studio{% endblock %}
+{% block page_title %}Make{% endblock %}
+{% block page_subtitle %}Pick a template first; use custom tools only when needed{% endblock %}
 
 {% block content %}
 <section class="content-grid">
   <div class="panel wide">
     <div class="panel-heading">
       <div>
-        <h2>Demo Examples</h2>
-        <span>LS ESP32 Pro V2.2 + LT-20W-A</span>
+        <h2>Templates</h2>
+        <span>Power tests, air-assist cuts, frames, and line art</span>
       </div>
       <i class="bi bi-grid-3x3-gap"></i>
     </div>
     <div class="example-grid" id="examples-list"></div>
   </div>
 
-  <form class="panel" id="text-generator">
+  <form class="panel custom-job-panel" id="text-generator">
     <div class="panel-heading">
       <div>
         <h2>Text</h2>
-        <span>Raster text job</span>
+        <span>Custom</span>
       </div>
       <i class="bi bi-fonts"></i>
     </div>
@@ -51,11 +51,11 @@
     <button class="btn btn-primary w-100" type="submit"><i class="bi bi-magic"></i> Create Text Job</button>
   </form>
 
-  <form class="panel" id="image-generator" enctype="multipart/form-data">
+  <form class="panel custom-job-panel" id="image-generator" enctype="multipart/form-data">
     <div class="panel-heading">
       <div>
         <h2>Image</h2>
-        <span>PNG or JPG raster</span>
+        <span>Custom</span>
       </div>
       <i class="bi bi-image"></i>
     </div>
@@ -92,7 +92,7 @@
     <button class="btn btn-primary w-100" type="submit"><i class="bi bi-magic"></i> Create Image Job</button>
   </form>
 
-  <form class="panel wide" id="manual-job-form">
+  <form class="panel wide custom-job-panel" id="manual-job-form">
     <div class="panel-heading">
       <div>
         <h2>Manual G-code</h2>

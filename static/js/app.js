@@ -298,7 +298,7 @@ async function loadExamples() {
       button.addEventListener("click", async () => {
         try {
           await api(`/api/examples/${button.dataset.createExample}/create`, { method: "POST" });
-          showToast("Demo job created");
+          showToast("Job created. Open Jobs to frame or run it.");
         } catch (error) {
           showToast(error.message);
         }
@@ -316,7 +316,7 @@ function bindDesigner() {
     event.preventDefault();
     try {
       await api("/api/generate/text", { method: "POST", body: new FormData(event.currentTarget) });
-      showToast("Text job created");
+      showToast("Text job created. Open Jobs to frame or run it.");
     } catch (error) {
       showToast(error.message);
     }
@@ -326,7 +326,7 @@ function bindDesigner() {
     event.preventDefault();
     try {
       await api("/api/generate/image", { method: "POST", body: new FormData(event.currentTarget) });
-      showToast("Image job created");
+      showToast("Image job created. Open Jobs to frame or run it.");
     } catch (error) {
       showToast(error.message);
     }
@@ -336,7 +336,7 @@ function bindDesigner() {
     event.preventDefault();
     try {
       await api("/api/jobs", { method: "POST", body: new FormData(event.currentTarget) });
-      showToast("Manual job saved");
+      showToast("Manual job saved. Open Jobs to frame or run it.");
     } catch (error) {
       showToast(error.message);
     }
@@ -350,7 +350,16 @@ async function loadJobs() {
     const payload = await api("/api/jobs");
     document.getElementById("jobs-count").textContent = `${payload.jobs.length} jobs`;
     if (!payload.jobs.length) {
-      target.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No jobs yet</td></tr>`;
+      target.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center py-4">
+            <div class="empty-state">
+              <strong>No jobs yet</strong>
+              <span>Make a template first, then come back here to frame and run it.</span>
+              <a class="btn btn-primary btn-sm" href="/designer"><i class="bi bi-plus-circle"></i> Make Job</a>
+            </div>
+          </td>
+        </tr>`;
       return;
     }
     target.innerHTML = payload.jobs

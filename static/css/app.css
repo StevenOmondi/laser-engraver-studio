@@ -93,6 +93,14 @@ body {
   box-shadow: inset 4px 0 0 #62d1bc;
 }
 
+.nav-section {
+  margin: 14px 10px 4px;
+  color: #9daab8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .sidebar-footer {
   margin-top: auto;
   display: grid;
@@ -192,6 +200,52 @@ body {
   grid-column: span 12;
 }
 
+.quick-panel {
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quick-step {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.quick-step > span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: #e9f3f7;
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.quick-step strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.quick-step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.danger-step > span {
+  background: #fff0ee;
+  color: var(--danger);
+}
+
 .panel-heading {
   display: flex;
   align-items: flex-start;
@@ -242,6 +296,21 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.simple-details {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.simple-details summary {
+  cursor: pointer;
+  color: #445061;
+  font-weight: 750;
+}
+
+.simple-details summary::marker {
+  color: var(--accent);
 }
 
 .btn {
@@ -396,6 +465,10 @@ body {
   color: #14613c;
 }
 
+.custom-job-panel {
+  grid-column: span 4;
+}
+
 .code-area,
 .code-preview,
 .console-log,
@@ -456,6 +529,18 @@ body {
   gap: 6px;
 }
 
+.empty-state {
+  display: inline-grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 340px;
+  color: var(--muted);
+}
+
+.empty-state strong {
+  color: var(--ink);
+}
+
 .checklist {
   display: grid;
   gap: 9px;
@@ -485,6 +570,10 @@ body {
   .panel,
   .panel.wide {
     grid-column: span 6;
+  }
+
+  .quick-panel {
+    grid-template-columns: 1fr;
   }
 
   .job-panel {
@@ -526,5 +615,13 @@ body {
 
   .preview-layout {
     grid-template-columns: 1fr;
+  }
+
+  .quick-step {
+    grid-template-columns: 36px 1fr;
+  }
+
+  .quick-step .btn {
+    grid-column: 1 / -1;
   }
 }

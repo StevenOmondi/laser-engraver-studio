@@ -1,10 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - Laser Engraver Studio{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
-{% block page_subtitle %}Connect, arm, jog, frame, and monitor jobs{% endblock %}
+{% block title %}Run - Laser Engraver Studio{% endblock %}
+{% block page_title %}Run{% endblock %}
+{% block page_subtitle %}Simple controls for connecting, arming, and watching the job{% endblock %}
 
 {% block content %}
 <section class="grid-dashboard">
+  <div class="panel quick-panel">
+    <div class="quick-step">
+      <span>1</span>
+      <div>
+        <strong>Make a job</strong>
+        <p>Start with a demo template or create text/image G-code.</p>
+      </div>
+      <a class="btn btn-primary" href="{{ url_for('designer') }}"><i class="bi bi-plus-circle"></i> Make</a>
+    </div>
+    <div class="quick-step">
+      <span>2</span>
+      <div>
+        <strong>Check the machine</strong>
+        <p>Connect USB, clear limits, and frame before cutting.</p>
+      </div>
+      <a class="btn btn-outline-primary" href="{{ url_for('jobs_page') }}"><i class="bi bi-stack"></i> Jobs</a>
+    </div>
+    <div class="quick-step danger-step">
+      <span>3</span>
+      <div>
+        <strong>Arm only when ready</strong>
+        <p>Laser stays disabled until the checklist is complete.</p>
+      </div>
+      <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#armModal"><i class="bi bi-shield-fill-check"></i> Arm</button>
+    </div>
+  </div>
+
   <div class="panel">
     <div class="panel-heading">
       <div>
@@ -35,9 +62,12 @@
         <button type="button" class="btn btn-outline-secondary" id="refresh-ports"><i class="bi bi-arrow-repeat"></i></button>
         <button type="button" class="btn btn-outline-secondary" data-api-post="/api/disconnect"><i class="bi bi-x-circle"></i> Disconnect</button>
       </div>
-      <button type="button" class="btn btn-outline-primary w-100" data-api-post="/api/setup/apply">
-        <i class="bi bi-check2-square"></i> Apply GRBL Setup
-      </button>
+      <details class="simple-details">
+        <summary>Advanced setup</summary>
+        <button type="button" class="btn btn-outline-primary w-100 mt-2" data-api-post="/api/setup/apply">
+          <i class="bi bi-check2-square"></i> Apply GRBL setup
+        </button>
+      </details>
     </form>
   </div>
 
@@ -52,8 +82,11 @@
     <div class="safety-actions">
       <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#armModal"><i class="bi bi-shield-fill-check"></i> Arm</button>
       <button class="btn btn-outline-danger" data-api-post="/api/disarm"><i class="bi bi-shield-slash"></i> Disarm</button>
-      <button class="btn btn-outline-secondary" id="focus-pulse"><i class="bi bi-record-circle"></i> Focus Pulse</button>
     </div>
+    <details class="simple-details">
+      <summary>Advanced laser check</summary>
+      <button class="btn btn-outline-secondary mt-2" id="focus-pulse"><i class="bi bi-record-circle"></i> Focus Pulse</button>
+    </details>
     <button class="btn btn-emergency" data-api-post="/api/estop"><i class="bi bi-stop-circle-fill"></i> Emergency Stop</button>
   </div>
 
@@ -70,22 +103,25 @@
       <button class="btn btn-outline-secondary" data-command="$H"><i class="bi bi-house"></i> Home</button>
       <button class="btn btn-outline-secondary" data-command="G92 X0 Y0 Z0"><i class="bi bi-pin-map"></i> Zero</button>
     </div>
-    <div class="jog-pad">
-      <button class="btn btn-light jog" data-y="10"><i class="bi bi-arrow-up"></i></button>
-      <button class="btn btn-light jog" data-x="-10"><i class="bi bi-arrow-left"></i></button>
-      <button class="btn btn-light jog" data-x="10"><i class="bi bi-arrow-right"></i></button>
-      <button class="btn btn-light jog" data-y="-10"><i class="bi bi-arrow-down"></i></button>
-    </div>
-    <div class="row g-2">
-      <div class="col">
-        <label class="form-label" for="jog-step">Step</label>
-        <input class="form-control" id="jog-step" type="number" value="10" min="0.1" max="100" step="0.1">
+    <details class="simple-details">
+      <summary>Jog controls</summary>
+      <div class="jog-pad">
+        <button class="btn btn-light jog" data-y="10"><i class="bi bi-arrow-up"></i></button>
+        <button class="btn btn-light jog" data-x="-10"><i class="bi bi-arrow-left"></i></button>
+        <button class="btn btn-light jog" data-x="10"><i class="bi bi-arrow-right"></i></button>
+        <button class="btn btn-light jog" data-y="-10"><i class="bi bi-arrow-down"></i></button>
       </div>
-      <div class="col">
-        <label class="form-label" for="jog-feed">Feed</label>
-        <input class="form-control" id="jog-feed" type="number" value="{{ machine.default_jog_feed_mm_min }}" min="50" max="{{ machine.max_feed_mm_min }}">
+      <div class="row g-2">
+        <div class="col">
+          <label class="form-label" for="jog-step">Step</label>
+          <input class="form-control" id="jog-step" type="number" value="10" min="0.1" max="100" step="0.1">
+        </div>
+        <div class="col">
+          <label class="form-label" for="jog-feed">Feed</label>
+          <input class="form-control" id="jog-feed" type="number" value="{{ machine.default_jog_feed_mm_min }}" min="50" max="{{ machine.max_feed_mm_min }}">
+        </div>
       </div>
-    </div>
+    </details>
   </div>
 
   <div class="panel limits-panel">
@@ -101,11 +137,14 @@
       <div class="limit-chip" id="limit-y">Y</div>
       <div class="limit-chip" id="limit-z">Z</div>
     </div>
-    <div class="button-row">
-      <button type="button" class="btn btn-outline-primary" id="enable-limits"><i class="bi bi-toggle-on"></i> Enable Homing + Limits</button>
-      <button type="button" class="btn btn-outline-secondary" data-command="$"><i class="bi bi-question-circle"></i> Help</button>
-    </div>
-    <div class="limit-note" id="limits-note">Hard limits are skipped while a switch is active.</div>
+    <details class="simple-details">
+      <summary>Limit setup</summary>
+      <div class="button-row mt-2">
+        <button type="button" class="btn btn-outline-primary" id="enable-limits"><i class="bi bi-toggle-on"></i> Enable Homing + Limits</button>
+        <button type="button" class="btn btn-outline-secondary" data-command="$"><i class="bi bi-question-circle"></i> Help</button>
+      </div>
+      <div class="limit-note mt-2" id="limits-note">Hard limits are skipped while a switch is active.</div>
+    </details>
   </div>
 
   <div class="panel job-panel">
