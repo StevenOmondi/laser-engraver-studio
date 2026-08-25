@@ -18,6 +18,15 @@ def slugify(value: str) -> str:
     return slug or "job"
 
 
+JOB_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")
+
+
+def validate_job_id(job_id: str) -> str:
+    if not JOB_ID_RE.fullmatch(job_id):
+        raise FileNotFoundError(job_id)
+    return job_id
+
+
 @dataclass
 class JobRecord:
     id: str
@@ -43,24 +52,32 @@ class JobRecord:
 
 class JobStore:
     def __init__(self, root: Path):
-        self.root = root
+        self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
 
+    def _safe_path(self, filename: str) -> Path:
+        path = (self.root / filename).resolve()
+        if self.root not in path.parents and path != self.root:
+            raise FileNotFoundError(filename)
+        return path
+
     def _meta_path(self, job_id: str) -> Path:
-        return self.root / f"{job_id}.json"
+        return self._safe_path(f"{validate_job_id(job_id)}.json")
 
     def _gcode_path(self, job_id: str) -> Path:
-        return self.root / f"{job_id}.gcode"
+        return self._safe_path(f"{validate_job_id(job_id)}.gcode")
 
     def save_job(self, name: str, gcode: str, source: str, metadata: dict | None = None) -> JobRecord:
-        job_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{slugify(name)}-{uuid.uuid4().hex[:6]}"
+        safe_name = name.strip() or "Untitled job"
+        job_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{slugify(safe_name)}-{uuid.uuid4().hex[:6]}"
         filename = f"{job_id}.gcode"
+        created_at = time.time()
         stats = gcode_stats(gcode).to_dict()
         record = JobRecord(
             id=job_id,
-            name=name.strip() or "Untitled job",
+            name=safe_name,
             filename=filename,
-            created_at=time.time(),
+            created_at=created_at,
             source=source,
             metadata=metadata or {},
             stats=stats,
@@ -105,6 +122,12 @@ class JobStore:
             stats=data.get("stats", {}),
         )
         return record, gcode_path.read_text(encoding="utf-8")
+
+    def gcode_file(self, job_id: str) -> Path:
+        path = self._gcode_path(job_id)
+        if not path.exists():
+            raise FileNotFoundError(job_id)
+        return path
 
     def delete_job(self, job_id: str) -> None:
         for path in (self._meta_path(job_id), self._gcode_path(job_id)):

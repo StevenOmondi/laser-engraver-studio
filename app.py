@@ -4,11 +4,11 @@ import json
 import os
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, Response, jsonify, render_template, request, send_file
 
 from laserengraver.core.controller import GrblSerialController, SimulatorController, available_ports
 from laserengraver.core.examples import list_demo_jobs
-from laserengraver.core.gcode import frame_gcode, line_may_fire_laser
+from laserengraver.core.gcode import frame_gcode, gcode_to_svg, line_may_fire_laser
 from laserengraver.core.image_to_gcode import image_from_upload, image_to_scanline_gcode, text_to_image
 from laserengraver.core.jobs import JobRecord, JobRunner, JobStore
 from laserengraver.core.profiles import DEFAULT_PROFILE, LS_ESP32_PRO_V22, LT_20W_A
@@ -376,9 +376,21 @@ def api_job(job_id: str):
 def api_job_download(job_id: str):
     try:
         record, _ = store.get_job(job_id)
-        return send_file(JOBS_DIR / record.filename, as_attachment=True, download_name=record.filename)
+        return send_file(store.gcode_file(job_id), as_attachment=True, download_name=record.filename)
     except FileNotFoundError:
         return fail("Job was not found.", 404)
+
+
+@app.get("/api/jobs/<job_id>/preview.svg")
+def api_job_preview(job_id: str):
+    try:
+        record, gcode = store.get_job(job_id)
+        svg = gcode_to_svg(gcode, record.name)
+        return Response(svg, mimetype="image/svg+xml")
+    except FileNotFoundError:
+        return fail("Job was not found.", 404)
+    except Exception as exc:
+        return fail(str(exc))
 
 
 @app.delete("/api/jobs/<job_id>")

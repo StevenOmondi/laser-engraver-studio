@@ -359,6 +359,11 @@ async function previewJob(id) {
     const payload = await api(`/api/jobs/${encodeURIComponent(id)}`);
     document.getElementById("preview-title").textContent = payload.job.name;
     document.getElementById("gcode-preview").textContent = payload.gcode;
+    const image = document.getElementById("toolpath-preview");
+    if (image) {
+      image.src = `/api/jobs/${encodeURIComponent(id)}/preview.svg?t=${Date.now()}`;
+      image.alt = `Toolpath preview for ${payload.job.name}`;
+    }
   } catch (error) {
     showToast(error.message);
   }

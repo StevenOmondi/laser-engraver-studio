@@ -28,6 +28,12 @@ python -m venv .venv
 
 Open `http://127.0.0.1:5111`.
 
+## Test
+
+```powershell
+.\.venv\Scripts\python -m unittest discover
+```
+
 ## Hardware Profile
 
 Machine defaults:

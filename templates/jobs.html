@@ -33,10 +33,15 @@
   <div class="panel-heading">
     <div>
       <h2>Preview</h2>
-      <span id="preview-title">Select a job</span>
+      <span id="preview-title">Select a job to see the path</span>
     </div>
-    <i class="bi bi-filetype-gcode"></i>
+    <i class="bi bi-eye"></i>
   </div>
-  <pre class="code-preview" id="gcode-preview"></pre>
+  <div class="preview-layout">
+    <div class="toolpath-shell">
+      <img id="toolpath-preview" alt="Toolpath preview">
+    </div>
+    <pre class="code-preview" id="gcode-preview"></pre>
+  </div>
 </section>
 {% endblock %}

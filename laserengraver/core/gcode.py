@@ -3,12 +3,19 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from html import escape
 from typing import Iterable
 
 
 COMMENT_PARENS_RE = re.compile(r"\([^)]*\)")
 COMMENT_SEMICOLON_RE = re.compile(r";.*$")
 WORD_RE = re.compile(r"([A-Z$])\s*(-?\d+(?:\.\d+)?)?", re.IGNORECASE)
+G0_RE = re.compile(r"\bG0?0\b", re.IGNORECASE)
+G1_RE = re.compile(r"\bG0?1\b", re.IGNORECASE)
+G90_RE = re.compile(r"\bG90\b", re.IGNORECASE)
+G91_RE = re.compile(r"\bG91\b", re.IGNORECASE)
+M3_M4_RE = re.compile(r"\bM0?[34]\b", re.IGNORECASE)
+M5_RE = re.compile(r"\bM0?5\b", re.IGNORECASE)
 
 
 def strip_comments(line: str) -> str:
@@ -49,6 +56,18 @@ def line_may_fire_laser(line: str) -> bool:
 
 def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
+
+
+def line_words(line: str) -> dict[str, str]:
+    return dict((m.group(1).upper(), m.group(2)) for m in WORD_RE.finditer(line) if m.group(2))
+
+
+def motion_code(line: str) -> str | None:
+    if G0_RE.search(line):
+        return "G0"
+    if G1_RE.search(line):
+        return "G1"
+    return None
 
 
 @dataclass
@@ -103,10 +122,11 @@ def gcode_stats(gcode: str) -> GCodeStats:
 
     for line in streamable_lines(gcode):
         line_count += 1
-        words = dict((m.group(1).upper(), m.group(2)) for m in WORD_RE.finditer(line) if m.group(2))
+        words = line_words(line)
         next_x = x
         next_y = y
-        has_motion = line.startswith(("G0", "G00", "G1", "G01"))
+        code = motion_code(line)
+        has_motion = code is not None
         if "F" in words:
             try:
                 feed = max(1.0, float(words["F"]))
@@ -130,7 +150,7 @@ def gcode_stats(gcode: str) -> GCodeStats:
         if has_motion:
             motion_lines += 1
             step = math.hypot(next_x - x, next_y - y)
-            if line.startswith(("G1", "G01")):
+            if code == "G1":
                 distance += step / feed
             for px, py in ((next_x, next_y),):
                 min_x = px if min_x is None else min(min_x, px)
@@ -152,6 +172,120 @@ def gcode_stats(gcode: str) -> GCodeStats:
         max_power=max_power,
         estimated_minutes=distance,
     )
+
+
+def gcode_segments(gcode: str) -> list[dict]:
+    segments: list[dict] = []
+    x = y = 0.0
+    absolute = True
+    laser_enabled = False
+    power = 0
+
+    for line in streamable_lines(gcode):
+        words = line_words(line)
+        if G90_RE.search(line):
+            absolute = True
+        elif G91_RE.search(line):
+            absolute = False
+        if M5_RE.search(line):
+            laser_enabled = False
+            power = 0
+        if "S" in words:
+            try:
+                power = max(0, int(float(words["S"])))
+            except ValueError:
+                pass
+        if M3_M4_RE.search(line):
+            laser_enabled = True
+
+        code = motion_code(line)
+        if code is None:
+            continue
+
+        next_x = x
+        next_y = y
+        if "X" in words:
+            value = float(words["X"])
+            next_x = value if absolute else x + value
+        if "Y" in words:
+            value = float(words["Y"])
+            next_y = value if absolute else y + value
+
+        if next_x != x or next_y != y:
+            segments.append(
+                {
+                    "x1": x,
+                    "y1": y,
+                    "x2": next_x,
+                    "y2": next_y,
+                    "rapid": code == "G0",
+                    "laser": code == "G1" and laser_enabled and power > 0,
+                    "power": power,
+                }
+            )
+        x, y = next_x, next_y
+
+    return segments
+
+
+def gcode_to_svg(gcode: str, title: str = "G-code preview", width: int = 900, height: int = 520, max_segments: int = 2200) -> str:
+    segments = gcode_segments(gcode)
+    if not segments:
+        return (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img">'
+            '<rect width="100%" height="100%" rx="8" fill="#f8fafc"/>'
+            f'<text x="{width / 2:.0f}" y="{height / 2:.0f}" text-anchor="middle" fill="#64748b" '
+            'font-family="Arial, sans-serif" font-size="22">No XY toolpath</text></svg>'
+        )
+
+    sampled = False
+    if len(segments) > max_segments:
+        step = max(1, math.ceil(len(segments) / max_segments))
+        segments = segments[::step]
+        sampled = True
+
+    xs = [value for segment in segments for value in (segment["x1"], segment["x2"])]
+    ys = [value for segment in segments for value in (segment["y1"], segment["y2"])]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    job_width = max(1.0, max_x - min_x)
+    job_height = max(1.0, max_y - min_y)
+    pad = 34
+    scale = min((width - pad * 2) / job_width, (height - pad * 2) / job_height)
+    offset_x = (width - job_width * scale) / 2
+    offset_y = (height - job_height * scale) / 2
+    stroke_width = max(0.8, min(width, height) / 780)
+
+    def sx(value: float) -> float:
+        return offset_x + (value - min_x) * scale
+
+    def sy(value: float) -> float:
+        return offset_y + (max_y - value) * scale
+
+    lines = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="{escape(title)}">',
+        '<rect width="100%" height="100%" rx="8" fill="#f8fafc"/>',
+        '<g stroke-linecap="round" stroke-linejoin="round" fill="none">',
+    ]
+    for segment in segments:
+        color = "#d92d20" if segment["laser"] else ("#94a3b8" if segment["rapid"] else "#2563eb")
+        dash = ' stroke-dasharray="5 5"' if segment["rapid"] else ""
+        opacity = 0.35 if segment["rapid"] else min(0.95, 0.35 + (segment["power"] / 1000))
+        lines.append(
+            f'<line x1="{sx(segment["x1"]):.2f}" y1="{sy(segment["y1"]):.2f}" '
+            f'x2="{sx(segment["x2"]):.2f}" y2="{sy(segment["y2"]):.2f}" '
+            f'stroke="{color}" stroke-width="{stroke_width:.2f}" opacity="{opacity:.2f}"{dash}/>'
+        )
+    lines.extend(
+        [
+            "</g>",
+            f'<text x="14" y="24" fill="#334155" font-family="Arial, sans-serif" font-size="14">{escape(title)}</text>',
+            f'<text x="14" y="{height - 14}" fill="#64748b" font-family="Arial, sans-serif" font-size="12">'
+            f'{job_width:.1f} x {job_height:.1f} mm{" - sampled" if sampled else ""}</text>',
+            "</svg>",
+        ]
+    )
+    return "".join(lines)
 
 
 class GCodeBuilder:
