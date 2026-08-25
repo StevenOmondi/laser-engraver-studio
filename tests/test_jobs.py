@@ -2,7 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from laserengraver.core.jobs import JobStore
+from laserengraver.core.controller import SimulatorController
+from laserengraver.core.jobs import JobRunner, JobStore
 
 
 class JobStoreTests(unittest.TestCase):
@@ -26,6 +27,19 @@ class JobStoreTests(unittest.TestCase):
 
             with self.assertRaises(FileNotFoundError):
                 store.delete_job("bad/id")
+
+    def test_stop_preserves_error_status_when_not_busy(self):
+        controller = SimulatorController()
+        controller.connect()
+        runner = JobRunner()
+        runner.status_text = "error"
+        runner.error = "ALARM:1"
+
+        runner.stop(controller)
+
+        snapshot = runner.snapshot()
+        self.assertEqual(snapshot["status"], "error")
+        self.assertEqual(snapshot["error"], "ALARM:1")
 
 
 if __name__ == "__main__":

@@ -82,6 +82,9 @@ class BaseController:
     def disconnect(self) -> None:
         self.connected = False
         self.state = "Disconnected"
+        self.feed = 0
+        self.spindle = 0
+        self.active_pins = ()
         self.log("Disconnected")
 
     def send_line(self, line: str, timeout: float = 15.0) -> str:
@@ -178,6 +181,21 @@ class GrblSerialController(BaseController):
         super().__init__()
         self._serial = None
 
+    def _mark_serial_fault(self, exc: Exception) -> None:
+        self.last_response = str(exc)
+        self.connected = False
+        self.state = "Disconnected"
+        self.feed = 0
+        self.spindle = 0
+        self.active_pins = ()
+        if self._serial:
+            try:
+                self._serial.close()
+            except Exception:
+                pass
+            self._serial = None
+        self.log(f"! serial connection lost: {exc}")
+
     def connect(self, port: str | None = None, baud: int = 115200) -> None:
         if serial is None:
             raise RuntimeError("pyserial is not installed.")
@@ -229,49 +247,53 @@ class GrblSerialController(BaseController):
         with self._lock:
             if not self.connected or not self._serial:
                 raise RuntimeError("Controller is not connected.")
-            clean = line.strip()
-            if clean == "\x18":
-                self._serial.write(b"\x18")
-                self._serial.flush()
-                self.log("> soft reset")
-                time.sleep(0.5)
-                self._drain()
-                self.state = "Idle"
-                self.spindle = 0
-                self.last_response = "soft reset"
-                return self.last_response
-            if clean in {"!", "~"}:
-                self._serial.write(clean.encode("ascii"))
+            try:
+                clean = line.strip()
+                if clean == "\x18":
+                    self._serial.write(b"\x18")
+                    self._serial.flush()
+                    self.log("> soft reset")
+                    time.sleep(0.5)
+                    self._drain()
+                    self.state = "Idle"
+                    self.spindle = 0
+                    self.last_response = "soft reset"
+                    return self.last_response
+                if clean in {"!", "~"}:
+                    self._serial.write(clean.encode("ascii"))
+                    self._serial.flush()
+                    self.log(f"> {clean}")
+                    self.last_response = "realtime command sent"
+                    return self.last_response
+                if clean == "?":
+                    payload = clean.encode("ascii")
+                else:
+                    payload = (clean + "\n").encode("ascii", errors="ignore")
+                self._serial.write(payload)
                 self._serial.flush()
                 self.log(f"> {clean}")
-                self.last_response = "realtime command sent"
-                return self.last_response
-            if clean == "?":
-                payload = clean.encode("ascii")
-            else:
-                payload = (clean + "\n").encode("ascii", errors="ignore")
-            self._serial.write(payload)
-            self._serial.flush()
-            self.log(f"> {clean}")
-            deadline = time.monotonic() + timeout
-            responses: list[str] = []
-            while time.monotonic() < deadline:
-                response = self._readline()
-                if not response:
-                    continue
-                responses.append(response)
-                self.log(f"< {response}")
-                if response.startswith("<"):
-                    self._parse_status_line(response)
-                    if clean == "?":
+                deadline = time.monotonic() + timeout
+                responses: list[str] = []
+                while time.monotonic() < deadline:
+                    response = self._readline()
+                    if not response:
+                        continue
+                    responses.append(response)
+                    self.log(f"< {response}")
+                    if response.startswith("<"):
+                        self._parse_status_line(response)
+                        if clean == "?":
+                            self.last_response = response
+                            return response
+                    low = response.lower()
+                    if low.startswith(("ok", "error", "alarm")):
                         self.last_response = response
                         return response
-                low = response.lower()
-                if low.startswith(("ok", "error", "alarm")):
-                    self.last_response = response
-                    return response
-            joined = " | ".join(responses[-4:]) if responses else "no response"
-            raise TimeoutError(f"Timed out waiting for controller response: {joined}")
+                joined = " | ".join(responses[-4:]) if responses else "no response"
+                raise TimeoutError(f"Timed out waiting for controller response: {joined}")
+            except Exception as exc:
+                self._mark_serial_fault(exc)
+                raise
 
     def status(self) -> ControllerStatus:
         if self.connected:
@@ -279,7 +301,6 @@ class GrblSerialController(BaseController):
                 self.send_line("?", timeout=1.0)
             except Exception as exc:  # status polling should not break the UI
                 self.last_response = str(exc)
-                self.log(f"! status poll failed: {exc}")
         return super().status()
 
     def _parse_status_line(self, line: str) -> None:

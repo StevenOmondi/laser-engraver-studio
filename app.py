@@ -313,8 +313,10 @@ def api_command():
         command = str(data.get("command", "")).strip()
         if not command:
             return fail("Command is empty.")
-        if line_may_fire_laser(command) and not safety.is_armed():
-            return fail("Laser-power commands require the safety latch to be armed.", 403)
+        if line_may_fire_laser(command):
+            require_no_active_limits()
+            if not safety.is_armed():
+                return fail("Laser-power commands require the safety latch to be armed.", 403)
         response = controller.send_line(command)
         return ok(response=response)
     except Exception as exc:
@@ -350,6 +352,7 @@ def api_laser_pulse():
     try:
         require_connected()
         require_idle()
+        require_no_active_limits()
         if not safety.is_armed():
             return fail("Arm the safety latch before any laser pulse.", 403)
         power = int(request_number("power", settings["laser"]["focus_power"], 1, min(25, settings["machine"]["pwm_max"])))
@@ -500,6 +503,7 @@ def api_job_frame(job_id: str):
     try:
         require_connected()
         require_idle()
+        require_no_active_limits()
         record, gcode = store.get_job(job_id)
         dry_frame = frame_gcode(gcode)
         frame_record = JobRecord(

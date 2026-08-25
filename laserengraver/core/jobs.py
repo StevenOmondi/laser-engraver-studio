@@ -229,6 +229,10 @@ class JobRunner:
         controller.cycle_start()
 
     def stop(self, controller: BaseController) -> None:
+        if not self.is_busy():
+            if self.status_text in {"running", "paused", "stopping"}:
+                self.status_text = "stopped"
+            return
         self._stop.set()
         self._pause.set()
         self.status_text = "stopping"

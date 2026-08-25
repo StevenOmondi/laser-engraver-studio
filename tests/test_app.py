@@ -13,6 +13,7 @@ class AppTests(unittest.TestCase):
     def tearDown(self):
         for job_id in self.created_jobs:
             store.delete_job(job_id)
+        laser_app.controller.active_pins = ()
 
     def test_core_pages_render(self):
         for path in ["/", "/designer", "/jobs", "/console", "/settings"]:
@@ -64,6 +65,36 @@ class AppTests(unittest.TestCase):
         self.client.post("/api/arm", json={"checklist": checklist, "minutes": 1})
 
         blocked = self.client.post(f"/api/jobs/{job_id}/run")
+
+        self.assertEqual(blocked.status_code, 400)
+        self.assertIn("Active limit switch", blocked.get_json()["message"])
+
+    def test_frame_blocks_when_limit_switch_is_active(self):
+        self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
+        laser_app.controller.active_pins = ("X",)
+        response = self.client.post("/api/examples/alignment_frame/create")
+        self.assertEqual(response.status_code, 200)
+        job_id = response.get_json()["job"]["id"]
+        self.created_jobs.append(job_id)
+
+        blocked = self.client.post(f"/api/jobs/{job_id}/frame")
+
+        self.assertEqual(blocked.status_code, 400)
+        self.assertIn("Active limit switch", blocked.get_json()["message"])
+
+    def test_laser_power_command_blocks_when_limit_switch_is_active(self):
+        self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
+        laser_app.controller.active_pins = ("Z",)
+        checklist = {
+            "eye_protection": True,
+            "ventilation": True,
+            "fire_watch": True,
+            "material": True,
+            "enclosure": True,
+        }
+        self.client.post("/api/arm", json={"checklist": checklist, "minutes": 1})
+
+        blocked = self.client.post("/api/command", json={"command": "M4 S10"})
 
         self.assertEqual(blocked.status_code, 400)
         self.assertIn("Active limit switch", blocked.get_json()["message"])
