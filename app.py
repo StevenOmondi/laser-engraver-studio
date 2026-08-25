@@ -11,7 +11,7 @@ from laserengraver.core.examples import list_demo_jobs
 from laserengraver.core.gcode import frame_gcode, gcode_to_svg, line_may_fire_laser
 from laserengraver.core.image_to_gcode import image_from_upload, image_to_scanline_gcode, text_to_image
 from laserengraver.core.jobs import JobRecord, JobRunner, JobStore
-from laserengraver.core.profiles import DEFAULT_PROFILE, LS_ESP32_PRO_V22, LT_20W_A
+from laserengraver.core.profiles import LS_ESP32_PRO_V22, LT_20W_A
 from laserengraver.core.safety import SafetyLatch
 
 

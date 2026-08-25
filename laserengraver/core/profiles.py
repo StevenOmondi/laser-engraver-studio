@@ -92,8 +92,3 @@ LT_20W_A = LaserProfile(
     ),
 )
 
-
-DEFAULT_PROFILE = {
-    "machine": LS_ESP32_PRO_V22,
-    "laser": LT_20W_A,
-}
