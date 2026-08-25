@@ -1,5 +1,6 @@
 import unittest
 
+import app as laser_app
 from app import app, store
 
 
@@ -45,6 +46,27 @@ class AppTests(unittest.TestCase):
         payload = response.get_json()
         self.assertTrue(payload["ok"])
         self.assertIn("$22=1", [item["command"] for item in payload["responses"]])
+
+    def test_run_blocks_when_limit_switch_is_active(self):
+        self.client.post("/api/connect", json={"mode": "simulator", "baud": 115200})
+        laser_app.controller.active_pins = ("Y",)
+        response = self.client.post("/api/examples/air_assist_pass_ladder/create")
+        self.assertEqual(response.status_code, 200)
+        job_id = response.get_json()["job"]["id"]
+        self.created_jobs.append(job_id)
+        checklist = {
+            "eye_protection": True,
+            "ventilation": True,
+            "fire_watch": True,
+            "material": True,
+            "enclosure": True,
+        }
+        self.client.post("/api/arm", json={"checklist": checklist, "minutes": 1})
+
+        blocked = self.client.post(f"/api/jobs/{job_id}/run")
+
+        self.assertEqual(blocked.status_code, 400)
+        self.assertIn("Active limit switch", blocked.get_json()["message"])
 
 
 if __name__ == "__main__":

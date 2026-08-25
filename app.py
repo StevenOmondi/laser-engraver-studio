@@ -103,6 +103,16 @@ def active_limit_axes() -> list[str]:
     return [axis.upper() for axis in ("x", "y", "z") if switches.get(axis)]
 
 
+def require_no_active_limits() -> None:
+    axes = active_limit_axes()
+    if axes:
+        raise RuntimeError(
+            "Active limit switch detected on "
+            + ", ".join(axes)
+            + ". Move off the switch, check wiring/invert settings, then unlock before running a job."
+        )
+
+
 def request_number(name: str, default: float, low: float, high: float) -> float:
     source = request.form if request.form else (request.get_json(silent=True) or {})
     try:
@@ -473,6 +483,7 @@ def api_job_run(job_id: str):
     try:
         require_connected()
         require_idle()
+        require_no_active_limits()
         if not safety.is_armed():
             return fail("Arm the safety latch before running a laser job.", 403)
         record, gcode = store.get_job(job_id)

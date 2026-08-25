@@ -416,6 +416,7 @@ async function runJob(id) {
     showToast("Job started");
     await refreshStatus();
   } catch (error) {
+    await refreshStatus();
     showToast(error.message);
   }
 }
